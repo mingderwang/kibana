@@ -264,6 +264,10 @@ export default function defaultSettingsProvider() {
       description: 'The time in milliseconds which an information notification ' +
         'will be displayed on-screen for. Setting to Infinity will disable.'
     },
+    'metrics:max_buckets': {
+      value: 2000,
+      description: 'The maximum number of buckets a single datasource can return'
+    },
     // Timelion stuff
     'timelion:showTutorial': {
       value: false,
@@ -292,6 +296,10 @@ export default function defaultSettingsProvider() {
     'timelion:default_rows': {
       value: 2,
       description: 'Number of rows on a timelion sheet by default'
+    },
+    'timelion:min_interval': {
+      value: '1ms',
+      description: 'The smallest interval that will be calculated when using "auto"'
     },
     'timelion:graphite.url': {
       value: 'https://www.hostedgraphite.com/UID/ACCESS_KEY/graphite',

@@ -1,9 +1,13 @@
 import { parse, format } from 'url';
 import { isString } from 'lodash';
 
-export default function (chrome, internals) {
+export function initChromeNavApi(chrome, internals) {
   chrome.getNavLinks = function () {
     return internals.nav;
+  };
+
+  chrome.navLinkExists = (id) => {
+    return !!internals.nav.find(link => link.id === id);
   };
 
   chrome.getNavLinkById = (id) => {

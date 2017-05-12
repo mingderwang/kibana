@@ -1,6 +1,6 @@
-import VisVisTypeProvider from 'ui/vis/vis_type';
-import VislibVisTypeVislibVisTypeProvider from 'ui/vislib_vis_type/vislib_vis_type';
-import VisSchemasProvider from 'ui/vis/schemas';
+import { VisVisTypeProvider } from 'ui/vis/vis_type';
+import { VislibVisTypeVislibVisTypeProvider } from 'ui/vislib_vis_type/vislib_vis_type';
+import { VisSchemasProvider } from 'ui/vis/schemas';
 import pointSeriesTemplate from 'plugins/kbn_vislib_vis_types/editors/point_series.html';
 import image from './images/icon-vertical.svg';
 
@@ -131,6 +131,7 @@ export default function PointSeriesVisType(Private) {
         name: 'metric',
         title: 'Y-Axis',
         min: 1,
+        aggFilter: ['!geo_centroid'],
         defaults: [
           { schema: 'metric', type: 'count' }
         ]
