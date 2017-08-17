@@ -1,5 +1,8 @@
 import Slugify from '../string/slugify';
 
+import AccessibilityExample
+  from '../../views/accessibility/accessibility_example';
+
 import ActionItemExample
   from '../../views/action_item/action_item_example';
 
@@ -18,6 +21,9 @@ import CardExample
 import CollapseButtonExample
   from '../../views/collapse_button/collapse_button_example';
 
+import ColorPickerExample
+  from '../../views/color_picker/color_picker_example';
+
 import ColumnExample
   from '../../views/column/column_example';
 
@@ -26,6 +32,9 @@ import EventExample
 
 import EventsSandbox
   from '../../views/event/events_sandbox';
+
+import ExpressionExample
+  from '../../views/expression/expression_example';
 
 import FormExample
   from '../../views/form/form_example';
@@ -44,6 +53,9 @@ import HeaderBarSandbox
 
 import IconExample
   from '../../views/icon/icon_example';
+
+import InfoButtonExample
+  from '../../views/info_button/info_button_example';
 
 import InfoPanelExample
   from '../../views/info_panel/info_panel_example';
@@ -69,8 +81,17 @@ import ModalExample
 import NoticeSandbox
   from '../../views/notice/notice_sandbox';
 
+import PagerExample
+  from '../../views/pager/pager_example';
+
 import PanelExample
   from '../../views/panel/panel_example';
+
+import PopoverExample
+  from '../../views/popover/popover_example';
+
+import EmptyTablePromptExample
+  from '../../views/empty_table_prompt/empty_table_prompt_example';
 
 import StatusTextExample
   from '../../views/status_text/status_text_example';
@@ -98,14 +119,20 @@ import ViewSandbox
 
 // Component route names should match the component name exactly.
 const components = [{
+  name: 'Accessibility',
+  component: AccessibilityExample,
+  hasReact: true,
+}, {
   name: 'ActionItem',
   component: ActionItemExample,
+  hasReact: true,
 }, {
   name: 'Badge',
   component: BadgeExample,
 }, {
   name: 'Bar',
   component: BarExample,
+  hasReact: true,
 }, {
   name: 'Button',
   component: ButtonExample,
@@ -113,30 +140,51 @@ const components = [{
 }, {
   name: 'Card',
   component: CardExample,
+  hasReact: true,
+}, {
+  name: 'ColorPicker',
+  component: ColorPickerExample,
+  hasReact: true,
 }, {
   name: 'Column',
   component: ColumnExample,
 }, {
   name: 'CollapseButton',
   component: CollapseButtonExample,
+  hasReact: true,
+}, {
+  name: 'EmptyTablePrompt',
+  component: EmptyTablePromptExample,
+  hasReact: true,
 }, {
   name: 'Event',
   component: EventExample,
+  hasReact: true,
+}, {
+  name: 'Expression',
+  component: ExpressionExample,
 }, {
   name: 'Form',
   component: FormExample,
 }, {
   name: 'FormLayout',
   component: FormLayoutExample,
+  hasReact: true,
 }, {
   name: 'Gallery',
   component: GalleryExample,
+  hasReact: true,
 }, {
   name: 'HeaderBar',
   component: HeaderBarExample,
+  hasReact: true,
 }, {
   name: 'Icon',
   component: IconExample,
+}, {
+  name: 'InfoButton',
+  component: InfoButtonExample,
+  hasReact: true,
 }, {
   name: 'InfoPanel',
   component: InfoPanelExample,
@@ -146,9 +194,11 @@ const components = [{
 }, {
   name: 'LocalNav',
   component: LocalNavExample,
+  hasReact: true,
 }, {
   name: 'Menu',
   component: MenuExample,
+  hasReact: true,
 }, {
   name: 'MenuButton',
   component: MenuButtonExample,
@@ -160,17 +210,27 @@ const components = [{
   component: ModalExample,
   hasReact: true,
 }, {
+  name: 'Pager',
+  component: PagerExample,
+  hasReact: true,
+}, {
   name: 'Panel',
   component: PanelExample,
+}, {
+  name: 'Popover',
+  component: PopoverExample,
+  hasReact: true,
 }, {
   name: 'StatusText',
   component: StatusTextExample,
 }, {
   name: 'Table',
   component: TableExample,
+  hasReact: true,
 }, {
   name: 'Tabs',
   component: TabsExample,
+  hasReact: true,
 }, {
   name: 'ToggleButton',
   component: ToggleButtonExample,

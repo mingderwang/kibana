@@ -87,7 +87,8 @@ class TimeseriesChart extends Component {
         key={annotation.key}
         icon={annotation.icon}
         reversed={this.props.reversed}
-        color={annotation.color}/>
+        color={annotation.color}
+      />
     );
   }
 
@@ -163,18 +164,18 @@ class TimeseriesChart extends Component {
       const value = item.datapoint[2] ? item.datapoint[1] - item.datapoint[2] : item.datapoint[1];
       tooltip = (
         <div style={styles.tooltipContainer}>
-          <i className="fa fa-caret-left" style={styles.leftCaret}></i>
+          <i className="fa fa-caret-left" style={styles.leftCaret} />
           <div style={styles.tooltip}>
             <div style={styles.items}>
               <div style={styles.icon}>
-                <i className="fa fa-circle" style={{ color: item.series.color }}></i>
+                <i className="fa fa-circle" style={{ color: item.series.color }} />
               </div>
               <div style={styles.text}>{ item.series.label }</div>
               <div style={styles.value}>{ formatter(value) }</div>
             </div>
-            <div style={styles.date}>{ moment(item.datapoint[0]).format('lll') }</div>
+            <div style={styles.date}>{ moment(item.datapoint[0]).format('ll LTS') }</div>
           </div>
-          <i className="fa fa-caret-right" style={styles.rightCaret}></i>
+          <i className="fa fa-caret-right" style={styles.rightCaret} />
         </div>
       );
     }
@@ -191,24 +192,34 @@ class TimeseriesChart extends Component {
       reversed: this.props.reversed,
       series: this.props.series,
       annotations: this.props.annotations,
+      showGrid: this.props.showGrid,
       show: this.props.show,
       tickFormatter: this.props.tickFormatter,
       yaxes: this.props.yaxes
     };
 
     const annotations = this.state.annotations.map(this.renderAnnotations);
+    let axisLabelClass = 'rhythm_chart__axis-label';
+    if (this.props.reversed) {
+      axisLabelClass += ' reversed';
+    }
 
     return (
       <div ref={(el) => this.container = el} className="rhythm_chart__timeseries-container">
         { tooltip }
         { annotations }
         <FlotChart {...params}/>
+        <div className={axisLabelClass}>{this.props.xaxisLabel}</div>
       </div>
     );
   }
 
 
 }
+
+TimeseriesChart.defaultProps = {
+  showGrid: true
+};
 
 TimeseriesChart.propTypes = {
   crosshair: PropTypes.bool,
@@ -221,6 +232,8 @@ TimeseriesChart.propTypes = {
   show: PropTypes.array,
   tickFormatter: PropTypes.func,
   yaxes: PropTypes.array,
+  showGrid: PropTypes.bool,
+  xaxisLabel: PropTypes.string
 };
 
 export default TimeseriesChart;

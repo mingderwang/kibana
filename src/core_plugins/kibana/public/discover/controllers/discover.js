@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import angular from 'angular';
-import moment from 'moment';
 import { getSort } from 'ui/doc_table/lib/get_sort';
 import * as columnActions from 'ui/doc_table/actions/columns';
 import dateMath from '@elastic/datemath';
@@ -15,12 +14,12 @@ import 'ui/index_patterns';
 import 'ui/state_management/app_state';
 import 'ui/timefilter';
 import 'ui/share';
+import 'ui/query_bar';
 import { VisProvider } from 'ui/vis';
+import { BasicResponseHandlerProvider } from 'ui/vis/response_handlers/basic';
 import { DocTitleProvider } from 'ui/doc_title';
-import { UtilsBrushEventProvider } from 'ui/utils/brush_event';
 import PluginsKibanaDiscoverHitSortFnProvider from 'plugins/kibana/discover/_hit_sort_fn';
 import { FilterBarQueryFilterProvider } from 'ui/filter_bar/query_filter';
-import { FilterManagerProvider } from 'ui/filter_manager';
 import { AggTypesBucketsIntervalOptionsProvider } from 'ui/agg_types/buckets/_interval_options';
 import { stateMonitorFactory } from 'ui/state_management/state_monitor_factory';
 import uiRoutes from 'ui/routes';
@@ -28,6 +27,9 @@ import { uiModules } from 'ui/modules';
 import indexTemplate from 'plugins/kibana/discover/index.html';
 import { StateProvider } from 'ui/state_management/state';
 import { documentationLinks } from 'ui/documentation_links/documentation_links';
+import { migrateLegacyQuery } from 'ui/utils/migrateLegacyQuery';
+import { QueryManagerProvider } from 'ui/query_manager';
+import { SavedObjectsClientProvider } from 'ui/saved_objects';
 
 const app = uiModules.get('apps/discover', [
   'kibana/notify',
@@ -45,8 +47,14 @@ uiRoutes
   resolve: {
     ip: function (Promise, courier, config, $location, Private) {
       const State = Private(StateProvider);
-      return courier.indexPatterns.getIds()
-      .then(function (list) {
+      const savedObjectsClient = Private(SavedObjectsClientProvider);
+
+      return savedObjectsClient.find({
+        type: 'index-pattern',
+        fields: ['title'],
+        perPage: 10000
+      })
+      .then(({ savedObjects }) => {
         /**
          *  In making the indexPattern modifiable it was placed in appState. Unfortunately,
          *  the load order of AppState conflicts with the load order of many other things
@@ -59,12 +67,12 @@ uiRoutes
         const state = new State('_a', {});
 
         const specified = !!state.index;
-        const exists = _.contains(list, state.index);
+        const exists = _.findIndex(savedObjects, o => o.id === state.index) > -1;
         const id = exists ? state.index : config.get('defaultIndex');
         state.destroy();
 
         return Promise.props({
-          list: list,
+          list: savedObjects,
           loaded: courier.indexPatterns.get(id),
           stateVal: state.index,
           stateValFound: specified && exists
@@ -89,16 +97,27 @@ app.directive('discoverApp', function () {
   };
 });
 
-function discoverController($scope, config, courier, $route, $window, Notifier,
-  AppState, timefilter, Promise, Private, kbnUrl) {
+function discoverController(
+  $element,
+  $route,
+  $scope,
+  $timeout,
+  $window,
+  AppState,
+  Notifier,
+  Private,
+  Promise,
+  config,
+  courier,
+  kbnUrl,
+  timefilter,
+) {
 
   const Vis = Private(VisProvider);
   const docTitle = Private(DocTitleProvider);
-  const brushEvent = Private(UtilsBrushEventProvider);
   const HitSortFn = Private(PluginsKibanaDiscoverHitSortFnProvider);
   const queryFilter = Private(FilterBarQueryFilterProvider);
-  const filterManager = Private(FilterManagerProvider);
-
+  const responseHandler = Private(BasicResponseHandlerProvider).handler;
   const notify = new Notifier({
     location: 'Discover'
   });
@@ -106,6 +125,7 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
   $scope.queryDocLinks = documentationLinks.query;
   $scope.intervalOptions = Private(AggTypesBucketsIntervalOptionsProvider);
   $scope.showInterval = false;
+  $scope.minimumVisibleRows = 50;
 
   $scope.intervalEnabled = function (interval) {
     return interval.val !== 'custom';
@@ -147,20 +167,92 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
   .highlightAll(true)
   .version(true);
 
-  if (savedSearch.id) {
-    docTitle.change(savedSearch.title);
-  }
+  const pageTitleSuffix = savedSearch.id && savedSearch.title ? `: ${savedSearch.title}` : '';
+  docTitle.change(`Discover${pageTitleSuffix}`);
 
   let stateMonitor;
   const $appStatus = $scope.appStatus = this.appStatus = {
     dirty: !savedSearch.id
   };
+
   const $state = $scope.state = new AppState(getStateDefaults());
+  const queryManager = Private(QueryManagerProvider)($state);
+
+  const getFieldCounts = async () => {
+    // the field counts aren't set until we have the data back,
+    // so we wait for the fetch to be done before proceeding
+    if (!$scope.fetchStatus) {
+      return $scope.fieldCounts;
+    }
+
+    return await new Promise(resolve => {
+      const unwatch = $scope.$watch('fetchStatus', (newValue) => {
+        if (newValue) {
+          return;
+        }
+
+        unwatch();
+        resolve($scope.fieldCounts);
+      });
+    });
+  };
+
+
+  const getSharingDataFields = async () => {
+    const selectedFields = $state.columns;
+    if (selectedFields.length === 1 && selectedFields[0] ===  '_source') {
+      const fieldCounts = await getFieldCounts();
+      return {
+        searchFields: null,
+        selectFields: _.keys(fieldCounts).sort()
+      };
+    }
+
+    const timeFieldName = $scope.indexPattern.timeFieldName;
+    const fields = timeFieldName ? [timeFieldName, ...selectedFields] : selectedFields;
+    return {
+      searchFields: fields,
+      selectFields: fields
+    };
+  };
+
+  this.getSharingData = async () => {
+    const searchSource = $scope.searchSource.clone();
+
+    const { searchFields, selectFields } = await getSharingDataFields();
+    searchSource.set('fields', searchFields);
+    searchSource.set('sort', getSort($state.sort, $scope.indexPattern));
+    searchSource.set('highlight', null);
+    searchSource.set('highlightAll', null);
+    searchSource.set('aggs', null);
+    searchSource.set('size', null);
+
+    const body = await searchSource.getSearchRequestBody();
+    return {
+      searchRequest: {
+        index: searchSource.get('index').title,
+        body
+      },
+      fields: selectFields,
+      metaFields: $scope.indexPattern.metaFields,
+      conflictedTypesFields: $scope.indexPattern.fields.filter(f => f.type === 'conflict').map(f => f.name),
+      indexPatternId: searchSource.get('index').id
+    };
+  };
+
+  this.getSharingType = () => {
+    return 'search';
+  };
+
+  this.getSharingTitle = () => {
+    return savedSearch.title;
+  };
+
   $scope.uiState = $state.makeStateful('uiState');
 
   function getStateDefaults() {
     return {
-      query: $scope.searchSource.get('query') || '',
+      query: $scope.searchSource.get('query') || { query: '', language: config.get('search:queryLanguage') },
       sort: getSort.array(savedSearch.sort, $scope.indexPattern),
       columns: savedSearch.columns.length > 0 ? savedSearch.columns : config.get('defaultColumns').slice(),
       index: $scope.indexPattern.id,
@@ -179,8 +271,6 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
   $scope.opts = {
     // number of records to fetch, then paginate through
     sampleSize: config.get('discover:sampleSize'),
-    // Index to match
-    index: $scope.indexPattern.id,
     timefield: $scope.indexPattern.timeFieldName,
     savedSearch: savedSearch,
     indexPatternList: $route.current.locals.ip.list,
@@ -242,6 +332,15 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
         $scope.fetch();
       });
 
+      // Necessary for handling new time filters when the date histogram is clicked
+      $scope.$watchCollection('state.$newFilters', function (filters = []) {
+        // need to convert filters generated from user interaction with viz into kuery AST
+        // These are handled by the filter bar directive when lucene is the query language
+        Promise.all(filters.map(queryManager.addLegacyFilter))
+        .then(() => $scope.state.$newFilters = [])
+        .then($scope.fetch);
+      });
+
       $scope.$watch('vis.aggs', function () {
         // no timefield, no vis, nothing to update
         if (!$scope.opts.timefield) return;
@@ -251,6 +350,12 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
         if (buckets && buckets.length === 1) {
           $scope.bucketInterval = buckets[0].buckets.getInterval();
         }
+      });
+
+      $scope.$watch('state.query', (newQuery) => {
+        $state.query = migrateLegacyQuery(newQuery);
+
+        $scope.fetch();
       });
 
       $scope.$watchMulti([
@@ -355,6 +460,15 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
     .catch(notify.error);
   };
 
+  $scope.updateQuery = function (query) {
+    // reset state if language changes
+    if ($state.query.language && $state.query.language !== query.language) {
+      $state.filters = [];
+    }
+
+    $state.query = query;
+  };
+
   $scope.searchSource.onBeginSegmentedFetch(function (segmented) {
     function flushResponseData() {
       $scope.hits = 0;
@@ -416,6 +530,14 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
 
     segmented.on('mergedSegment', function (merged) {
       $scope.mergedEsResp = merged;
+
+      if ($scope.opts.timefield) {
+        $scope.searchSource.rawResponse = merged;
+        responseHandler($scope.vis, merged).then(resp => {
+          $scope.visData = resp;
+        });
+      }
+
       $scope.hits = merged.hits.total;
 
       const indexPattern = $scope.searchSource.get('index');
@@ -487,7 +609,7 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
   // TODO: On array fields, negating does not negate the combination, rather all terms
   $scope.filterQuery = function (field, values, operation) {
     $scope.indexPattern.popularizeField(field, 1);
-    filterManager.add(field, values, operation, $state.index);
+    queryManager.add(field, values, operation, $scope.indexPattern.id);
   };
 
   $scope.addColumn = function addColumn(columnName) {
@@ -504,8 +626,19 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
     columnActions.moveColumn($scope.state.columns, columnName, newIndex);
   };
 
-  $scope.toTop = function () {
+  $scope.scrollToTop = function () {
     $window.scrollTo(0, 0);
+  };
+
+  $scope.scrollToBottom = function () {
+    // delay scrolling to after the rows have been rendered
+    $timeout(() => {
+      $element.find('#discoverBottomMarker').focus();
+    }, 0);
+  };
+
+  $scope.showAllRows = function () {
+    $scope.minimumVisibleRows = $scope.hits;
   };
 
   let loadingVis;
@@ -545,15 +678,6 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
         addLegend: false,
         addTimeMarker: true
       },
-      listeners: {
-        click: function (e) {
-          notify.log(e);
-          timefilter.time.from = moment(e.point.x);
-          timefilter.time.to = moment(e.point.x + e.data.ordered.interval);
-          timefilter.time.mode = 'absolute';
-        },
-        brush: brushEvent($scope.state)
-      },
       aggs: visStateAggs
     });
 
@@ -586,7 +710,7 @@ function discoverController($scope, config, courier, $route, $window, Notifier,
 
     if (own && !stateVal) return own;
     if (stateVal && !stateValFound) {
-      const err = '"' + stateVal + '" is not a configured pattern. ';
+      const err = '"' + stateVal + '" is not a configured pattern ID. ';
       if (own) {
         notify.warning(err + ' Using the saved index pattern: "' + own.id + '"');
         return own;

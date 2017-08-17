@@ -7,7 +7,13 @@ export default function ({ getService, getPageObjects }) {
   const remote = getService('remote');
   const kibanaServer = getService('kibanaServer');
   const screenshots = getService('screenshots');
+  const queryBar = getService('queryBar');
+  const filterBar = getService('filterBar');
   const PageObjects = getPageObjects(['common', 'discover', 'header']);
+  const defaultSettings = {
+    'dateFormat:tz': 'UTC',
+    'defaultIndex': 'logstash-*'
+  };
 
   describe('discover app', function describeIndexTests() {
     const fromTime = '2015-09-19 06:31:44.000';
@@ -17,10 +23,7 @@ export default function ({ getService, getPageObjects }) {
 
     before(async function () {
       // delete .kibana index and update configDoc
-      await kibanaServer.uiSettings.replace({
-        'dateFormat:tz':'UTC',
-        'defaultIndex':'logstash-*'
-      });
+      await kibanaServer.uiSettings.replace(defaultSettings);
 
       log.debug('load kibana index with default index pattern');
       await esArchiver.load('discover');
@@ -60,7 +63,7 @@ export default function ({ getService, getPageObjects }) {
       it('load query should show query name', async function () {
         await PageObjects.discover.loadSavedSearch(queryName1);
 
-        await retry.try(async function() {
+        await retry.try(async function () {
           expect(await PageObjects.discover.getCurrentQueryName()).to.be(queryName1);
         });
         await screenshots.take('Discover-load-query');
@@ -68,7 +71,7 @@ export default function ({ getService, getPageObjects }) {
 
       it('should show the correct hit count', async function () {
         const expectedHitCount = '14,004';
-        await retry.try(async function() {
+        await retry.try(async function () {
           expect(await PageObjects.discover.getHitCount()).to.be(expectedHitCount);
         });
       });
@@ -217,7 +220,7 @@ export default function ({ getService, getPageObjects }) {
         expect(isVisible).to.be(true);
       });
 
-      it('should have a link that opens and closes the time picker', async function() {
+      it('should have a link that opens and closes the time picker', async function () {
         const noResultsTimepickerLink = await PageObjects.discover.getNoResultsTimepicker();
         expect(await PageObjects.header.isTimepickerOpen()).to.be(false);
 
@@ -229,6 +232,77 @@ export default function ({ getService, getPageObjects }) {
       });
     });
 
+    describe('query language switching', function () {
+
+      after(async function () {
+        await kibanaServer.uiSettings.replace(defaultSettings);
+
+        log.debug('discover');
+        await PageObjects.common.navigateToApp('discover');
+      });
+
+      it('should not show a language switcher by default', async function () {
+        const languageSwitcherExists = await queryBar.hasLanguageSwitcher();
+        expect(languageSwitcherExists).to.be(false);
+      });
+
+      it('should show a language switcher after it has been enabled in the advanced settings', async function () {
+        await kibanaServer.uiSettings.update({
+          'search:queryLanguage:switcher:enable': true
+        });
+        await PageObjects.common.navigateToApp('discover');
+        const languageSwitcherExists = await queryBar.hasLanguageSwitcher();
+        expect(languageSwitcherExists).to.be(true);
+      });
+
+      it('should use lucene by default', async function () {
+        const currentLanguage = await queryBar.getCurrentLanguage();
+        expect(currentLanguage).to.be('lucene');
+      });
+
+      it('should allow changing the default language in advanced settings', async function () {
+        await kibanaServer.uiSettings.update({
+          'search:queryLanguage': 'kuery'
+        });
+        await PageObjects.common.navigateToApp('discover');
+
+        const languageSwitcherExists = await queryBar.hasLanguageSwitcher();
+        expect(languageSwitcherExists).to.be(true);
+
+        const currentLanguage = await queryBar.getCurrentLanguage();
+        expect(currentLanguage).to.be('kuery');
+      });
+
+      it('should reset the query and filters when the language is switched', async function () {
+        await PageObjects.header.setAbsoluteRange(fromTime, toTime);
+        await PageObjects.discover.clickFieldListItem('response');
+        await PageObjects.discover.clickFieldListPlusFilter('response', 200);
+        await PageObjects.header.waitUntilLoadingHasFinished();
+
+        let queryString = await queryBar.getQueryString();
+        expect(queryString).to.not.be.empty();
+
+        await queryBar.setLanguage('lucene');
+        await PageObjects.header.waitUntilLoadingHasFinished();
+        queryString = await queryBar.getQueryString();
+        expect(queryString).to.be.empty();
+        expect(await filterBar.hasFilter('response', 200)).to.be(false);
+
+        await PageObjects.discover.clickFieldListPlusFilter('response', 200);
+        await PageObjects.header.waitUntilLoadingHasFinished();
+        queryString = await queryBar.getQueryString();
+        expect(queryString).to.be.empty();
+        expect(await filterBar.hasFilter('response', 200)).to.be(true);
+
+        await queryBar.setLanguage('kuery');
+        await PageObjects.header.waitUntilLoadingHasFinished();
+        queryString = await queryBar.getQueryString();
+        expect(queryString).to.be.empty();
+        expect(await filterBar.hasFilter('response', 200)).to.be(false);
+      });
+
+    });
+
     describe('data-shared-item', function () {
       it('should have correct data-shared-item title and description', async () => {
         const expected = {
@@ -236,10 +310,12 @@ export default function ({ getService, getPageObjects }) {
           description: 'A Saved Search Description'
         };
 
-        await PageObjects.discover.loadSavedSearch(expected.title);
-        const { title, description } = await PageObjects.common.getSharedItemTitleAndDescription();
-        expect(title).to.eql(expected.title);
-        expect(description).to.eql(expected.description);
+        await retry.try(async () => {
+          await PageObjects.discover.loadSavedSearch(expected.title);
+          const { title, description } = await PageObjects.common.getSharedItemTitleAndDescription();
+          expect(title).to.eql(expected.title);
+          expect(description).to.eql(expected.description);
+        });
       });
     });
   });

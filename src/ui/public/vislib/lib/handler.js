@@ -1,6 +1,7 @@
 import d3 from 'd3';
 import _ from 'lodash';
 import $ from 'jquery';
+import marked from 'marked';
 import { NoResults } from 'ui/errors';
 import { Binder } from 'ui/binder';
 import { VislibLibLayoutLayoutProvider } from './layout/layout';
@@ -145,7 +146,7 @@ export function VisHandlerProvider(Private) {
           loadedCount++;
           if (loadedCount === chartSelection.length) {
             // events from all charts are propagated to vis, we only need to fire renderComplete once they all finish
-            $(self.el).trigger('renderComplete');
+            self.vis.emit('renderComplete');
           }
         });
 
@@ -195,7 +196,7 @@ export function VisHandlerProvider(Private) {
 
       if (message === 'No results found') {
         div.append('div')
-        .attr('class', 'text-center visualize-error visualize-chart ng-scope')
+        .attr('class', 'text-center visualize-error visualize-chart')
         .append('div').attr('class', 'item top')
         .append('div').attr('class', 'item')
         .append('h2').html('<i class="fa fa-meh-o"></i>')
@@ -203,7 +204,7 @@ export function VisHandlerProvider(Private) {
 
         div.append('div').attr('class', 'item bottom');
       } else {
-        div.append('h4').text(message);
+        div.append('h4').text(marked.inlineLexer(message, []));
       }
 
       $(this.el).trigger('renderComplete');

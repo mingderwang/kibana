@@ -6,17 +6,17 @@ import 'ui/promises';
 import { RequestQueueProvider } from '../_request_queue';
 import { ErrorHandlersProvider } from '../_error_handlers';
 import { FetchProvider } from '../fetch';
-import { DecorateQueryProvider } from './_decorate_query';
 import { FieldWildcardProvider } from '../../field_wildcard';
-import { getHighlightRequestProvider } from '../../highlight';
-import { migrateFilter } from './_migrate_filter';
+import { getHighlightRequest } from '../../../../core_plugins/kibana/common/highlight';
+import { BuildESQueryProvider } from './build_query';
 
-export function AbstractDataSourceProvider(Private, Promise, PromiseEmitter) {
+export function AbstractDataSourceProvider(Private, Promise, PromiseEmitter, config) {
   const requestQueue = Private(RequestQueueProvider);
   const errorHandlers = Private(ErrorHandlersProvider);
   const courierFetch = Private(FetchProvider);
+  const buildESQuery = Private(BuildESQueryProvider);
   const { fieldWildcardFilter } = Private(FieldWildcardProvider);
-  const getHighlightRequest = Private(getHighlightRequestProvider);
+  const getConfig = (...args) => config.get(...args);
 
   function SourceAbstract(initialState, strategy) {
     const self = this;
@@ -190,6 +190,31 @@ export function AbstractDataSourceProvider(Private, Promise, PromiseEmitter) {
   };
 
   /**
+   * Fetch this source and reject the returned Promise on error
+   *
+   * Otherwise behaves like #fetch()
+   *
+   * @async
+   */
+  SourceAbstract.prototype.fetchAsRejectablePromise = function () {
+    const self = this;
+    let req = _.first(self._myStartableQueued());
+
+    if (!req) {
+      req = self._createRequest();
+    }
+
+    req.setErrorHandler((request, error) => {
+      request.defer.reject(error);
+      request.abort();
+    });
+
+    courierFetch.these([req]);
+
+    return req.getCompletePromise();
+  };
+
+  /**
    * Fetch all pending requests for this source ASAP
    * @async
    */
@@ -276,54 +301,49 @@ export function AbstractDataSourceProvider(Private, Promise, PromiseEmitter) {
     .then(function () {
       if (type === 'search') {
         // This is down here to prevent the circular dependency
-        const decorateQuery = Private(DecorateQueryProvider);
-
         flatState.body = flatState.body || {};
 
-        // defaults for the query
-        if (!flatState.body.query) {
-          flatState.body.query = {
-            'match_all': {}
-          };
+        const computedFields = flatState.index.getComputedFields();
+        flatState.body.stored_fields = computedFields.storedFields;
+        flatState.body.script_fields = flatState.body.script_fields || {};
+        flatState.body.docvalue_fields = flatState.body.docvalue_fields || [];
+
+        _.extend(flatState.body.script_fields, computedFields.scriptFields);
+        flatState.body.docvalue_fields = _.union(flatState.body.docvalue_fields, computedFields.docvalueFields);
+
+        if (flatState.body._source) {
+          // exclude source fields for this index pattern specified by the user
+          const filter = fieldWildcardFilter(flatState.body._source.excludes);
+          flatState.body.docvalue_fields = flatState.body.docvalue_fields.filter(filter);
         }
 
-        if (flatState.body.size > 0) {
-          const computedFields = flatState.index.getComputedFields();
-          flatState.body.stored_fields = computedFields.storedFields;
-          flatState.body.script_fields = flatState.body.script_fields || {};
-          flatState.body.docvalue_fields = flatState.body.docvalue_fields || [];
+        // if we only want to search for certain fields
+        const fields = flatState.fields;
+        if (fields) {
+          // filter out the docvalue_fields, and script_fields to only include those that we are concerned with
+          flatState.body.docvalue_fields = _.intersection(flatState.body.docvalue_fields, fields);
+          flatState.body.script_fields = _.pick(flatState.body.script_fields, fields);
 
-          _.extend(flatState.body.script_fields, computedFields.scriptFields);
-          flatState.body.docvalue_fields = _.union(flatState.body.docvalue_fields, computedFields.docvalueFields);
+          // request the remaining fields from both stored_fields and _source
+          const remainingFields = _.difference(fields, _.keys(flatState.body.script_fields));
+          flatState.body.stored_fields = remainingFields;
+          _.set(flatState.body, '_source.includes', remainingFields);
+        }
 
-          if (flatState.body._source) {
-            // exclude source fields for this index pattern specified by the user
-            const filter = fieldWildcardFilter(flatState.body._source.excludes);
-            flatState.body.docvalue_fields = flatState.body.docvalue_fields.filter(filter);
+        flatState.body.query = buildESQuery(flatState.index, flatState.query, flatState.filters);
+
+        if (flatState.highlightAll != null) {
+          if (flatState.highlightAll && flatState.body.query) {
+            flatState.body.highlight = getHighlightRequest(flatState.body.query, getConfig);
           }
+          delete flatState.highlightAll;
         }
 
-        decorateQuery(flatState.body.query);
-
         /**
-         * Create a filter that can be reversed for filters with negate set
-         * @param {boolean} reverse This will reverse the filter. If true then
-         *                          anything where negate is set will come
-         *                          through otherwise it will filter out
-         * @returns {function}
+         * Translate a filter into a query to support es 3+
+         * @param  {Object} filter - The filter to translate
+         * @return {Object} the query version of that filter
          */
-        const filterNegate = function (reverse) {
-          return function (filter) {
-            if (_.isUndefined(filter.meta) || _.isUndefined(filter.meta.negate)) return !reverse;
-            return filter.meta && filter.meta.negate === reverse;
-          };
-        };
-
-        /**
-        * Translate a filter into a query to support es 3+
-        * @param  {Object} filter - The filter to translate
-        * @return {Object} the query version of that filter
-        */
         const translateToQuery = function (filter) {
           if (!filter) return;
 
@@ -333,55 +353,6 @@ export function AbstractDataSourceProvider(Private, Promise, PromiseEmitter) {
 
           return filter;
         };
-
-        /**
-         * Clean out any invalid attributes from the filters
-         * @param {object} filter The filter to clean
-         * @returns {object}
-         */
-        const cleanFilter = function (filter) {
-          return _.omit(filter, ['meta']);
-        };
-
-        // switch to filtered query if there are filters
-        if (flatState.filters) {
-          if (flatState.filters.length) {
-            _.each(flatState.filters, function (filter) {
-              if (filter.query) {
-                decorateQuery(filter.query);
-              }
-            });
-
-            flatState.body.query = {
-              bool: {
-                must: (
-                  [flatState.body.query].concat(
-                    (flatState.filters || [])
-                    .filter(filterNegate(false))
-                    .map(translateToQuery)
-                    .map(cleanFilter)
-                    .map(migrateFilter)
-                  )
-                ),
-                must_not: (
-                  (flatState.filters || [])
-                  .filter(filterNegate(true))
-                  .map(translateToQuery)
-                  .map(cleanFilter)
-                  .map(migrateFilter)
-                )
-              }
-            };
-          }
-          delete flatState.filters;
-        }
-
-        if (flatState.highlightAll != null) {
-          if (flatState.highlightAll && flatState.body.query) {
-            flatState.body.highlight = getHighlightRequest(flatState.body.query);
-          }
-          delete flatState.highlightAll;
-        }
 
         // re-write filters within filter aggregations
         (function recurse(aggBranch) {
