@@ -1,3 +1,7 @@
+import { VisualizeConstants } from '../../../src/core_plugins/kibana/public/visualize/visualize_constants';
+import Keys from 'leadfoot/keys';
+import Bluebird from 'bluebird';
+
 export function VisualizePageProvider({ getService, getPageObjects }) {
   const remote = getService('remote');
   const config = getService('config');
@@ -9,6 +13,10 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
   const defaultFindTimeout = config.get('timeouts.find');
 
   class VisualizePage {
+
+    async waitForVisualizationSelectPage() {
+      await testSubjects.find('visualizeSelectTypePage');
+    }
 
     async clickAreaChart() {
       await find.clickByPartialLinkText('Area');
@@ -54,25 +62,25 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       await find.clickByPartialLinkText('Tag Cloud');
     }
 
+    async clickVega() {
+      await find.clickByPartialLinkText('Vega');
+    }
+
+    async clickVisualBuilder() {
+      await find.clickByPartialLinkText('Visual Builder');
+    }
+
+    async clickEditorSidebarCollapse() {
+      await testSubjects.click('collapseSideBarButton');
+    }
+
+    async selectTagCloudTag(tagDisplayText) {
+      await testSubjects.click(tagDisplayText);
+    }
+
     async getTextTag() {
       const elements = await find.allByCssSelector('text');
       return await Promise.all(elements.map(async element => await element.getVisibleText()));
-    }
-
-    async getVectorMapData() {
-      const chartTypes = await find.allByCssSelector('path.leaflet-clickable');
-
-      async function getChartColors(chart) {
-        const stroke = await chart.getAttribute('fill');
-        return { color: stroke };
-      }
-
-      let colorData = await Promise.all(chartTypes.map(getChartColors));
-      colorData = colorData.filter((country) => {
-        //filter empty colors
-        return country.color !== 'rgb(200,200,200)';
-      });
-      return colorData;
     }
 
     async getTextSizes() {
@@ -92,6 +100,10 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       await find.clickByPartialLinkText('Heat Map');
     }
 
+    async clickInputControlVis() {
+      await find.clickByPartialLinkText('Controls');
+    }
+
     async getChartTypeCount() {
       const tags = await find.allByCssSelector('a.wizard-vis-type.ng-scope');
       return tags.length;
@@ -106,10 +118,68 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       return await Promise.all(getChartTypesPromises);
     }
 
+    async selectVisSourceIfRequired() {
+      log.debug('selectVisSourceIfRequired');
+      const selectPage = await testSubjects.findAll('visualizeSelectSearch');
+      if (selectPage.length) {
+        log.debug('a search is required for this visualization');
+        await this.clickNewSearch();
+      }
+    }
+
+    async getLabTypeLinks() {
+      return await remote.findAllByPartialLinkText('(Lab)');
+    }
+
+    async getExperimentalTypeLinks() {
+      return await remote.findAllByPartialLinkText('(Experimental)');
+    }
+
+    async isExperimentalInfoShown() {
+      return await testSubjects.exists('experimentalVisInfo');
+    }
+
+    async getExperimentalInfo() {
+      return await testSubjects.find('experimentalVisInfo');
+    }
+
     async clickAbsoluteButton() {
       await find.clickByCssSelector(
         'ul.nav.nav-pills.nav-stacked.kbn-timepicker-modes:contains("absolute")',
         defaultFindTimeout * 2);
+    }
+
+    async setMarkdownTxt(markdownTxt) {
+      const input = await testSubjects.find('markdownTextarea');
+      await input.clearValue();
+      await input.type(markdownTxt);
+    }
+
+    async getMarkdownText() {
+      const markdownContainer = await testSubjects.find('markdownBody');
+      return markdownContainer.getVisibleText();
+    }
+
+    async getMarkdownBodyDescendentText(selector) {
+      const markdownContainer = await testSubjects.find('markdownBody');
+      const element = await find.descendantDisplayedByCssSelector(selector, markdownContainer);
+      return element.getVisibleText();
+    }
+
+    async getVegaSpec() {
+      // Adapted from console_page.js:getVisibleTextFromAceEditor(). Is there a common utilities file?
+      const editor = await testSubjects.find('vega-editor');
+      const lines = await editor.findAllByClassName('ace_line_group');
+      const linesText = await Bluebird.map(lines, l => l.getVisibleText());
+      return linesText.join('\n');
+    }
+
+    async getVegaViewContainer() {
+      return await find.byCssSelector('div.vega-view-container');
+    }
+
+    async getVegaControlContainer() {
+      return await find.byCssSelector('div.vega-controls-container');
     }
 
     async setFromTime(timeString) {
@@ -124,6 +194,79 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       await input.type(timeString);
     }
 
+    async setReactSelect(className, value) {
+      const input = await find.byCssSelector(className + ' * input', 0);
+      await input.clearValue();
+      await input.type(value);
+      await find.clickByCssSelector('.Select-option');
+      const stillOpen = await find.existsByCssSelector('.Select-menu-outer', 0);
+      if (stillOpen) {
+        await find.clickByCssSelector(className + ' * .Select-arrow-zone');
+      }
+    }
+
+    async clearReactSelect(className) {
+      await find.clickByCssSelector(className + ' * .Select-clear-zone');
+    }
+
+    async getReactSelectOptions(containerSelector) {
+      await testSubjects.click(containerSelector);
+      const menu = await retry.try(
+        async () => find.byCssSelector('.Select-menu-outer'));
+      return await menu.getVisibleText();
+    }
+
+    async doesReactSelectHaveValue(className) {
+      return await find.existsByCssSelector(className + ' * .Select-value-label', 0);
+    }
+
+    async getReactSelectValue(className) {
+      const hasValue = await this.doesReactSelectHaveValue(className);
+      if (!hasValue) {
+        return '';
+      }
+
+      const valueElement = await retry.try(
+        async () => find.byCssSelector(className + ' * .Select-value-label'));
+      return await valueElement.getVisibleText();
+    }
+
+    async addInputControl() {
+      await testSubjects.click('inputControlEditorAddBtn');
+    }
+
+    async checkCheckbox(selector) {
+      const element = await testSubjects.find(selector);
+      const isSelected = await element.isSelected();
+      if(!isSelected) {
+        log.debug(`checking checkbox ${selector}`);
+        await testSubjects.click(selector);
+      }
+    }
+
+    async uncheckCheckbox(selector) {
+      const element = await testSubjects.find(selector);
+      const isSelected = await element.isSelected();
+      if(isSelected) {
+        log.debug(`unchecking checkbox ${selector}`);
+        await testSubjects.click(selector);
+      }
+    }
+
+    async setSelectByOptionText(selectId, optionText) {
+      const options = await find.allByCssSelector(`#${selectId} > option`);
+      const optionsTextPromises = options.map(async (optionElement) => {
+        return await optionElement.getVisibleText();
+      });
+      const optionsText = await Promise.all(optionsTextPromises);
+
+      const optionIndex = optionsText.indexOf(optionText);
+      if (optionIndex === -1) {
+        throw new Error(`Unable to find option '${optionText}' in select ${selectId}. Available options: ${optionsText.join(',')}`);
+      }
+      await options[optionIndex].click();
+    }
+
     async clickGoButton() {
       await testSubjects.click('timepickerGoButton');
     }
@@ -132,24 +275,28 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       return await testSubjects.exists('spyToggleButton');
     }
 
+    async getSideEditorExists() {
+      return await find.existsByCssSelector('.collapsible-sidebar');
+    }
+
     async openSpyPanel() {
       log.debug('openSpyPanel');
-      const isOpen = await testSubjects.exists('spyModeSelect');
+      const isOpen = await testSubjects.exists('spyContentContainer');
       if (!isOpen) {
         await retry.try(async () => {
           await this.toggleSpyPanel();
-          await testSubjects.find('spyModeSelect');
+          await testSubjects.find('spyContentContainer');
         });
       }
     }
 
     async closeSpyPanel() {
       log.debug('closeSpyPanel');
-      let isOpen = await testSubjects.exists('spyModeSelect');
+      let isOpen = await testSubjects.exists('spyContentContainer');
       if (isOpen) {
         await retry.try(async () => {
           await this.toggleSpyPanel();
-          isOpen = await testSubjects.exists('spyModeSelect');
+          isOpen = await testSubjects.exists('spyContentContainer');
           if (isOpen) {
             throw new Error('Failed to close spy panel');
           }
@@ -172,11 +319,12 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
     }
 
     async clickMetricEditor() {
-      await find.clickByCssSelector('button[aria-label="Open Editor"]');
+      await find.clickByCssSelector('button[data-test-subj="toggleEditor"]');
     }
 
-    async clickNewSearch() {
-      await find.clickByCssSelector('.list-group-item a');
+    async clickNewSearch(indexPattern = 'logstash-*') {
+      await testSubjects.click(`paginatedListItem-${indexPattern}`);
+      await PageObjects.header.waitUntilLoadingHasFinished();
     }
 
     async setValue(newValue) {
@@ -184,10 +332,6 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       const input = await find.byCssSelector('input[ng-model="numberListCntr.getList()[$index]"]');
       await input.clearValue();
       await input.type(newValue);
-    }
-
-    async clickSavedSearch() {
-      await find.clickByCssSelector('li[ng-click="stepTwoMode=\'saved\'"]');
     }
 
     async selectSearch(searchName) {
@@ -247,7 +391,7 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
 
     async orderBy(fieldValue) {
       await find.clickByCssSelector(
-          'select.form-control.ng-pristine.ng-valid.ng-untouched.ng-valid-required[ng-model="agg.params.orderBy"] ' +
+        'select.form-control.ng-pristine.ng-valid.ng-untouched.ng-valid-required[ng-model="agg.params.orderBy"] ' +
           'option.ng-binding.ng-scope:contains("' + fieldValue + '")');
     }
 
@@ -270,7 +414,22 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
 
     async setNumericInterval(newValue) {
       const input = await find.byCssSelector('input[name="interval"]');
+      await input.clearValue();
+      await input.type(newValue + '');
+    }
+
+    async setSize(newValue) {
+      const input = await find.byCssSelector('input[name="size"]');
+      await input.clearValue();
       await input.type(newValue);
+    }
+
+    async toggleOtherBucket() {
+      return await find.clickByCssSelector('input[name="showOther"]');
+    }
+
+    async toggleMissingBucket() {
+      return await find.clickByCssSelector('input[name="showMissing"]');
     }
 
     async clickGo() {
@@ -278,24 +437,49 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       await PageObjects.header.waitUntilLoadingHasFinished();
     }
 
+    async toggleAutoMode() {
+      await testSubjects.click('visualizeEditorAutoButton');
+    }
+
+    async sizeUpEditor() {
+      await testSubjects.click('visualizeEditorResizer');
+      await remote.pressKeys(Keys.ARROW_RIGHT);
+    }
+
     async clickOptions() {
       await find.clickByPartialLinkText('Options');
+    }
+
+    async clickData() {
+      await testSubjects.click('visualizeEditDataLink');
+    }
+
+    async clickVisEditorTab(tabName) {
+      await testSubjects.click('visEditorTab' + tabName);
     }
 
     async selectWMS() {
       await find.clickByCssSelector('input[name="wms.enabled"]');
     }
 
+    async ensureSavePanelOpen() {
+      log.debug('ensureSavePanelOpen');
+      let isOpen = await testSubjects.exists('saveVisualizationButton');
+      await retry.try(async () => {
+        while (!isOpen) {
+          await testSubjects.click('visualizeSaveButton');
+          isOpen = await testSubjects.exists('saveVisualizationButton');
+        }
+      });
+    }
+
     async saveVisualization(vizName) {
-      await testSubjects.click('visualizeSaveButton');
-      log.debug('saveButton button clicked');
-      const visTitle = await find.byName('visTitle');
-      await visTitle.type(vizName);
+      await this.ensureSavePanelOpen();
+      await testSubjects.setValue('visTitleInput', vizName);
       log.debug('click submit button');
       await testSubjects.click('saveVisualizationButton');
       await PageObjects.header.waitUntilLoadingHasFinished();
-
-      return await PageObjects.header.getToastMessage();
+      return await testSubjects.exists('saveVisualizationSuccess');
     }
 
     async clickLoadSavedVisButton() {
@@ -310,7 +494,7 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       // can't uses dashes in saved visualizations when filtering
       // or extended character sets
       // https://github.com/elastic/kibana/issues/6300
-      await input.type(vizName.replace('-',' '));
+      await input.type(vizName.replace('-', ' '));
     }
 
     async clickVisualizationByName(vizName) {
@@ -318,9 +502,9 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
 
       return retry.try(function tryingForTime() {
         return remote
-        .setFindTimeout(defaultFindTimeout)
-        .findByPartialLinkText(vizName)
-        .click();
+          .setFindTimeout(defaultFindTimeout)
+          .findByPartialLinkText(vizName)
+          .click();
       });
     }
 
@@ -377,7 +561,7 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       // by a bunch of 'L'ines from that point to the next.  Those points are
       // the values we're going to use to calculate the data values we're testing.
       // So git rid of the one 'M' and split the rest on the 'L's.
-      const tempArray = data.replace('M','').split('L');
+      const tempArray = data.replace('M', '').split('L');
       const chartSections = tempArray.length / 2;
       log.debug('chartSections = ' + chartSections + ' height = ' + yAxisHeight + ' yAxisLabel = ' + yAxisLabel);
       const chartData = [];
@@ -396,7 +580,7 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       const yLabel = await maxYAxisMarker.getVisibleText();
       const yAxisLabel = yLabel.replace(/,/g, '');
 
-        // 2). find and save the y-axis pixel size (the chart height)
+      // 2). find and save the y-axis pixel size (the chart height)
       const rectangle = await find.byCssSelector('clipPath rect');
       const theHeight = await rectangle.getAttribute('height');
       const yAxisHeight = theHeight;
@@ -464,6 +648,13 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       return await Promise.all(getChartTypesPromises);
     }
 
+    async getPieChartLabels() {
+      const chartTypes = await find.allByCssSelector('path.slice', defaultFindTimeout * 2);
+
+      const getChartTypesPromises = chartTypes.map(async chart => await chart.getAttribute('data-label'));
+      return await Promise.all(getChartTypesPromises);
+    }
+
     async getChartAreaWidth() {
       const rect = await retry.try(async () => find.byCssSelector('clipPath rect'));
       return await rect.getAttribute('width');
@@ -474,9 +665,12 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       return await rect.getAttribute('height');
     }
 
+    async selectTableInSpyPaneSelect() {
+      await testSubjects.click('spyModeSelect-table');
+    }
+
     async getDataTableData() {
-      const dataTable = await retry.try(
-        async () => testSubjects.find('paginated-table-body'));
+      const dataTable = await testSubjects.find('paginated-table-body');
       return await dataTable.getVisibleText();
     }
 
@@ -484,6 +678,10 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       const dataTableHeader = await retry.try(
         async () => testSubjects.find('paginated-table-header'));
       return await dataTableHeader.getVisibleText();
+    }
+
+    async toggleIsFilteredByCollarCheckbox() {
+      await testSubjects.click('isFilteredByCollarCheckbox');
     }
 
     async getMarkdownData() {
@@ -504,9 +702,24 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
     }
 
     async clickMapButton(zoomSelector) {
-      const zooms = await this.getZoomSelectors(zoomSelector);
-      await Promise.all(zooms.map(async zoom => await zoom.click()));
-      await PageObjects.header.waitUntilLoadingHasFinished();
+      await retry.try(async () => {
+        const zooms = await this.getZoomSelectors(zoomSelector);
+        await Promise.all(zooms.map(async zoom => await zoom.click()));
+        await PageObjects.header.waitUntilLoadingHasFinished();
+      });
+    }
+
+    async getVisualizationRequest() {
+      log.debug('getVisualizationRequest');
+      await this.openSpyPanel();
+      await testSubjects.click('spyModeSelect-request');
+      return await testSubjects.getVisibleText('visualizationEsRequestBody');
+    }
+
+    async getMapBounds() {
+      const request = await this.getVisualizationRequest();
+      const requestObject = JSON.parse(request);
+      return requestObject.aggs.filter_agg.filter.geo_bounding_box['geo.coordinates'];
     }
 
     async clickMapZoomIn() {
@@ -547,20 +760,44 @@ export function VisualizePageProvider({ getService, getPageObjects }) {
       return await this.clickMapButton('a.fa-crop');
     }
 
-    async getTileMapData() {
-      const chartTypes = await find.allByCssSelector('path.leaflet-clickable');
-      async function getChartType(chart) {
-        const color = await chart.getAttribute('stroke');
-        const d = await chart.getAttribute('d');
-        // scale the radius up (sometimes less than 1) and then round to int
-        let radius = d.replace(/.*A(\d+\.\d+),.*/,'$1') * 10;
-        radius = Math.round(radius);
-        return { color, radius };
-      }
-      const getChartTypesPromises = chartTypes.map(getChartType);
-      return await Promise.all(getChartTypesPromises);
+    async clickLandingPageBreadcrumbLink() {
+      log.debug('clickLandingPageBreadcrumbLink');
+      await find.clickByCssSelector(`a[href="#${VisualizeConstants.LANDING_PAGE_PATH}"]`);
     }
 
+    /**
+     * Returns true if already on the landing page (that page doesn't have a link to itself).
+     * @returns {Promise<boolean>}
+     */
+    async onLandingPage() {
+      log.debug(`VisualizePage.onLandingPage`);
+      const exists = await testSubjects.exists('visualizeLandingPage');
+      return exists;
+    }
+
+    async gotoLandingPage() {
+      log.debug('VisualizePage.gotoLandingPage');
+      const onPage = await this.onLandingPage();
+      if (!onPage) {
+        await retry.try(async () => {
+          await this.clickLandingPageBreadcrumbLink();
+          const onLandingPage = await this.onLandingPage();
+          if (!onLandingPage) throw new Error('Not on the landing page.');
+        });
+      }
+    }
+
+    async clickLegendOption(name) {
+      await testSubjects.click(`legend-${name}`);
+    }
+
+    async selectNewLegendColorChoice(color) {
+      await testSubjects.click(`legendSelectColor-${color}`);
+    }
+
+    async doesSelectedLegendColorExist(color) {
+      return await testSubjects.exists(`legendSelectedColor-${color}`);
+    }
   }
 
   return new VisualizePage();

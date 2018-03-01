@@ -7,6 +7,7 @@ import { VisSchemasProvider } from 'ui/vis/editors/default/schemas';
 import tagCloudTemplate from 'plugins/tagcloud/tag_cloud_controller.html';
 import { VisTypesRegistryProvider } from 'ui/registry/vis_types';
 import image from './images/icon-tagcloud.svg';
+import { Status } from 'ui/vis/update_status';
 
 VisTypesRegistryProvider.register(function TagCloudProvider(Private) {
   const VisFactory = Private(VisFactoryProvider);
@@ -27,7 +28,8 @@ VisTypesRegistryProvider.register(function TagCloudProvider(Private) {
       },
       template: tagCloudTemplate,
     },
-    responseHandler: 'none',
+    requiresUpdateStatus: [Status.PARAMS, Status.RESIZE],
+    responseHandler: 'tabify',
     editorConfig: {
       collections: {
         scales: ['linear', 'log', 'square root'],
@@ -41,7 +43,7 @@ VisTypesRegistryProvider.register(function TagCloudProvider(Private) {
           title: 'Tag Size',
           min: 1,
           max: 1,
-          aggFilter: ['!std_dev', '!percentiles', '!percentile_ranks', '!derivative'],
+          aggFilter: ['!std_dev', '!percentiles', '!percentile_ranks', '!derivative', '!geo_bounds', '!geo_centroid'],
           defaults: [
             { schema: 'metric', type: 'count' }
           ]
@@ -59,5 +61,3 @@ VisTypesRegistryProvider.register(function TagCloudProvider(Private) {
     }
   });
 });
-
-

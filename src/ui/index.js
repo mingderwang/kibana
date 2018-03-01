@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { defaults, _ } from 'lodash';
 import { props, reduce as reduceAsync } from 'bluebird';
 import Boom from 'boom';
@@ -137,3 +138,7 @@ export default async (kbnServer, server, config) => {
     });
   });
 };
+=======
+export { uiMixin } from './ui_mixin';
+export { collectUiExports } from './ui_exports';
+>>>>>>> 6fd3a229769fdd8393d771f9061435be945023a0

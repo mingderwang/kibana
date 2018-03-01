@@ -49,6 +49,7 @@ describe('Vislib Gauge Chart Test Suite', function () {
         maskBars: 50,
         bgFill: '#eee',
         subText: '',
+        fontSize: 32
       }
     }
   };

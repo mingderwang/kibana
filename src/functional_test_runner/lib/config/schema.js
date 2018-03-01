@@ -2,12 +2,13 @@ import { resolve, dirname } from 'path';
 
 import Joi from 'joi';
 
-import { ConsoleReporterProvider } from '../reporters';
-
 // valid pattern for ID
 // enforced camel-case identifiers for consistency
 const ID_PATTERN = /^[a-zA-Z0-9_]+$/;
-const INSPECTING = process.execArgv.includes('--inspect');
+const INSPECTING = (
+  process.execArgv.includes('--inspect') ||
+  process.execArgv.includes('--inspect-brk')
+);
 
 const urlPartsSchema = () => Joi.object().keys({
   protocol: Joi.string().valid('http', 'https').default('http'),
@@ -16,6 +17,11 @@ const urlPartsSchema = () => Joi.object().keys({
   auth: Joi.string().regex(/^[^:]+:.+$/, 'username and password seperated by a colon'),
   username: Joi.string(),
   password: Joi.string(),
+  pathname: Joi.string().regex(/^\//, 'start with a /'),
+  hash: Joi.string().regex(/^\//, 'start with a /')
+}).default();
+
+const appUrlPartsSchema = () => Joi.object().keys({
   pathname: Joi.string().regex(/^\//, 'start with a /'),
   hash: Joi.string().regex(/^\//, 'start with a /')
 }).default();
@@ -48,7 +54,6 @@ export const schema = Joi.object().keys({
   timeouts: Joi.object().keys({
     find: Joi.number().default(10000),
     try: Joi.number().default(40000),
-    test: Joi.number().default(INSPECTING ? Infinity : 120000),
     esRequestTimeout: Joi.number().default(30000),
     kibanaStabilize: Joi.number().default(15000),
     navigateStatusPageCheck: Joi.number().default(250),
@@ -58,9 +63,16 @@ export const schema = Joi.object().keys({
     bail: Joi.boolean().default(false),
     grep: Joi.string(),
     slow: Joi.number().default(30000),
-    timeout: Joi.number().default(60000),
+    timeout: Joi.number().default(INSPECTING ? Infinity : 180000),
     ui: Joi.string().default('bdd'),
-    reporterProvider: Joi.func().default(ConsoleReporterProvider),
+  }).default(),
+
+  updateBaselines: Joi.boolean().default(false),
+
+  junit: Joi.object().keys({
+    enabled: Joi.boolean().default(!!process.env.CI),
+    reportName: Joi.string(),
+    rootDirectory: Joi.string(),
   }).default(),
 
   users: Joi.object().pattern(
@@ -76,6 +88,8 @@ export const schema = Joi.object().keys({
     elasticsearch: urlPartsSchema(),
   }).default(),
 
+  env: Joi.object().default(),
+
   chromedriver: Joi.object().keys({
     url: Joi.string().uri({ scheme: /https?/ }).default('http://localhost:9515')
   }).default(),
@@ -83,7 +97,7 @@ export const schema = Joi.object().keys({
   // definition of apps that work with `common.navigateToApp()`
   apps: Joi.object().pattern(
     ID_PATTERN,
-    urlPartsSchema()
+    appUrlPartsSchema()
   ).default(),
 
   // settings for the esArchiver module

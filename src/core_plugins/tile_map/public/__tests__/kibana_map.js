@@ -8,14 +8,19 @@ describe('kibana_map tests', function () {
   let domNode;
   let kibanaMap;
 
-  function setupDOM() {
-    domNode = document.createElement('div');
-    domNode.style.top = '0';
-    domNode.style.left = '0';
-    domNode.style.width = '512px';
-    domNode.style.height = '512px';
-    domNode.style.position = 'fixed';
-    domNode.style['pointer-events'] = 'none';
+  function createDiv(width, height) {
+    const div = document.createElement('div');
+    div.style.top = '0';
+    div.style.left = '0';
+    div.style.width = width;
+    div.style.height = height;
+    div.style.position = 'fixed';
+    div.style['pointer-events'] = 'none';
+    return div;
+  }
+
+  function setupDOM(width, height) {
+    domNode = createDiv(width, height);
     document.body.appendChild(domNode);
   }
 
@@ -28,11 +33,11 @@ describe('kibana_map tests', function () {
   describe('KibanaMap - basics', function () {
 
     beforeEach(async function () {
-      setupDOM();
+      setupDOM('512px', '512px');
       kibanaMap = new KibanaMap(domNode, {
         minZoom: 1,
         maxZoom: 10,
-        center: [0,0],
+        center: [0, 0],
         zoom: 0
       });
     });
@@ -67,38 +72,92 @@ describe('kibana_map tests', function () {
 
   });
 
-  describe('KibanaMap - getUntrimmedBounds', function () {
 
-    beforeEach(async function () {
-      setupDOM();
-      domNode.style.width = '1600px';
-      domNode.style.height = '1024px';
-      kibanaMap = new KibanaMap(domNode, {
-        minZoom: 1,
-        maxZoom: 10,
-        center: [0,0],
-        zoom: 2
-      });
-    });
+  describe('getUntrimmedBounds', function () {
 
     afterEach(function () {
       kibanaMap.destroy();
       teardownDOM();
     });
 
-    it('should get untrimmed map bounds', function () {
-      const bounds = kibanaMap.getUntrimmedBounds(false);
-      expect(bounds.bottom_right.lon).to.equal(281.25);
-      expect(bounds.top_left.lon).to.equal(-281.25);
+    describe('extended bounds', function () {
+      beforeEach(async function () {
+        setupDOM('1600px', '1024px');
+        kibanaMap = new KibanaMap(domNode, {
+          minZoom: 1,
+          maxZoom: 10,
+          center: [0, 0],
+          zoom: 2
+        });
+      });
+
+      it('should get untrimmed map bounds', function () {
+        const bounds = kibanaMap.getUntrimmedBounds();
+        expect(bounds.bottom_right.lon.toFixed(2)).to.equal('281.25');
+        expect(bounds.top_left.lon.toFixed(2)).to.equal('-281.25');
+      });
+    });
+
+    describe('no map height (should default to size of 1px for height)', function () {
+      beforeEach(async function () {
+        setupDOM('386px', '256px');
+        const noHeightNode = createDiv('386px', '0px');
+        domNode.appendChild(noHeightNode);
+        kibanaMap = new KibanaMap(noHeightNode, {
+          minZoom: 1,
+          maxZoom: 10,
+          center: [0, 0],
+          zoom: 10
+        });
+      });
+
+      it('should calculate map dimensions based on enforcement of single pixel min-width CSS-rule', function () {
+        const bounds = kibanaMap.getUntrimmedBounds();
+        expect(bounds).to.have.property('bottom_right');
+        expect(round(bounds.bottom_right.lon, 2)).to.equal(0.27);
+        expect(round(bounds.bottom_right.lat, 2)).to.equal(0);
+        expect(bounds).to.have.property('top_left');
+        expect(round(bounds.top_left.lon, 2)).to.equal(-0.27);
+        expect(round(bounds.top_left.lat, 2)).to.equal(0);
+      });
+
+      function round(num, dig) {
+        return Math.round(num * Math.pow(10, dig)) / Math.pow(10, dig);
+      }
+
+
+    });
+
+    describe('no map width (should default to size of 1px for width)', function () {
+      beforeEach(async function () {
+        setupDOM('386px', '256px');
+        const noWidthNode = createDiv('0px', '256px');
+        domNode.appendChild(noWidthNode);
+        kibanaMap = new KibanaMap(noWidthNode, {
+          minZoom: 1,
+          maxZoom: 10,
+          center: [0, 0],
+          zoom: 10
+        });
+      });
+
+      it('should calculate map dimensions based on enforcement of single pixel min-width CSS-rule', function () {
+        const bounds = kibanaMap.getUntrimmedBounds();
+        expect(bounds).to.have.property('bottom_right');
+        expect(Math.round(bounds.bottom_right.lon)).to.equal(0);
+        expect(bounds.bottom_right.lat.toFixed(2)).to.equal('-0.18');
+        expect(bounds).to.have.property('top_left');
+        expect(Math.round(bounds.top_left.lon)).to.equal(0);
+        expect(bounds.top_left.lat.toFixed(2)).to.equal('0.18');
+      });
     });
   });
 
 
   describe('KibanaMap - attributions', function () {
 
-
     beforeEach(async function () {
-      setupDOM();
+      setupDOM('512px', '512px');
       kibanaMap = new KibanaMap(domNode, {
         minZoom: 1,
         maxZoom: 10,
@@ -138,14 +197,15 @@ describe('kibana_map tests', function () {
 
   });
 
+
   describe('KibanaMap - baseLayer', function () {
 
     beforeEach(async function () {
-      setupDOM();
+      setupDOM('512px', '512px');
       kibanaMap = new KibanaMap(domNode, {
         minZoom: 1,
         maxZoom: 10,
-        center: [0,0],
+        center: [0, 0],
         zoom: 0
       });
     });

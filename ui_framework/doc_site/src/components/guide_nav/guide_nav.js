@@ -1,7 +1,5 @@
-import React, {
-  Component,
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React, { Component } from 'react';
 
 import {
   Link,
@@ -117,8 +115,8 @@ export class GuideNav extends Component {
       )).map((item, index) => {
         const icon =
           item.hasReact
-          ? <div className="guideNavItem__reactLogo" />
-          : undefined;
+            ? <div className="guideNavItem__reactLogo" />
+            : undefined;
         return (
           <div key={`componentNavItem-${index}`} className="guideNavItem">
             <Link
@@ -140,8 +138,8 @@ export class GuideNav extends Component {
       )).map((item, index) => {
         const icon =
           item.hasReact
-          ? <div className="guideNavItem__reactLogo" />
-          : undefined;
+            ? <div className="guideNavItem__reactLogo" />
+            : undefined;
         return (
           <div key={`sandboxNavItem-${index}`} className="guideNavItem">
             <Link

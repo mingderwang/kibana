@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React, { Component } from 'react';
 import VisEditorVisualization from './vis_editor_visualization';
 import Visualization from './visualization';
 import VisPicker from './vis_picker';
@@ -7,14 +8,18 @@ import brushHandler from '../lib/create_brush_handler';
 import { get } from 'lodash';
 
 class VisEditor extends Component {
-
   constructor(props) {
     super(props);
     const { appState } = props;
     const reversed = get(appState, 'options.darkTheme', false);
     this.state = { model: props.vis.params, dirty: false, autoApply: true, reversed };
     this.onBrush = brushHandler(props.vis.API.timeFilter);
+    this.handleUiState = this.handleUiState.bind(this, props.vis);
     this.handleAppStateChange = this.handleAppStateChange.bind(this);
+  }
+
+  handleUiState(vis, ...args) {
+    vis.uiStateVal(...args);
   }
 
   componentWillMount() {
@@ -58,11 +63,15 @@ class VisEditor extends Component {
     };
 
     if (!this.props.vis.isEditorMode()) {
+      if (!this.props.vis.params || !this.props.visData) return null;
       const reversed = this.state.reversed;
       return (
         <Visualization
+          dateFormat={this.props.config.get('dateFormat')}
           reversed={reversed}
           onBrush={this.onBrush}
+          onUiState={this.handleUiState}
+          uiState={this.props.vis.getUiState()}
           fields={this.props.vis.fields}
           model={this.props.vis.params}
           visData={this.props.visData}
@@ -70,32 +79,38 @@ class VisEditor extends Component {
       );
     }
 
-
     const { model } = this.state;
 
-    if (model) {
+    if (model && this.props.visData) {
       return (
         <div className="vis_editor">
-          <VisPicker
-            model={model}
-            onChange={handleChange}
-          />
+          <div className="vis-editor-hide-for-reporting">
+            <VisPicker model={model} onChange={handleChange} />
+          </div>
           <VisEditorVisualization
             dirty={this.state.dirty}
             autoApply={this.state.autoApply}
             model={model}
             visData={this.props.visData}
+            onUiState={this.handleUiState}
+            uiState={this.props.vis.getUiState()}
             onBrush={this.onBrush}
             onCommit={handleCommit}
             onToggleAutoApply={handleAutoApplyToggle}
             onChange={handleChange}
+            title={this.props.vis.title}
+            description={this.props.vis.description}
+            dateFormat={this.props.config.get('dateFormat')}
           />
-          <PanelConfig
-            fields={this.props.vis.fields}
-            model={model}
-            visData={this.props.visData}
-            onChange={handleChange}
-          />
+          <div className="vis-editor-hide-for-reporting">
+            <PanelConfig
+              fields={this.props.vis.fields}
+              model={model}
+              visData={this.props.visData}
+              dateFormat={this.props.config.get('dateFormat')}
+              onChange={handleChange}
+            />
+          </div>
         </div>
       );
     }
@@ -107,13 +122,21 @@ class VisEditor extends Component {
     this.props.renderComplete();
   }
 
+  componentDidUpdate() {
+    this.props.renderComplete();
+  }
 }
+
+VisEditor.defaultProps = {
+  visData: {}
+};
 
 VisEditor.propTypes = {
   vis: PropTypes.object,
   visData: PropTypes.object,
   appState: PropTypes.object,
   renderComplete: PropTypes.func,
+  config: PropTypes.object
 };
 
 export default VisEditor;

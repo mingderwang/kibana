@@ -15,7 +15,6 @@ export default class ClusterManager {
     const serverArgv = [];
     const optimizerArgv = [
       '--plugins.initialize=false',
-      '--uiSettings.enabled=false',
       '--server.autoListen=false',
     ];
 
@@ -23,12 +22,14 @@ export default class ClusterManager {
       this.basePathProxy = new BasePathProxy(this, settings);
 
       optimizerArgv.push(
-        `--server.basePath=${this.basePathProxy.basePath}`
+        `--server.basePath=${this.basePathProxy.basePath}`,
+        '--server.rewriteBasePath=true',
       );
 
       serverArgv.push(
         `--server.port=${this.basePathProxy.targetPort}`,
-        `--server.basePath=${this.basePathProxy.basePath}`
+        `--server.basePath=${this.basePathProxy.basePath}`,
+        '--server.rewriteBasePath=true',
       );
     }
 

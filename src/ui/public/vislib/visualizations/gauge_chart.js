@@ -31,27 +31,33 @@ export function GaugeChartProvider(Private) {
       return function (selection) {
         selection.each(function (data) {
           const div = d3.select(this);
-          const containerMargin = 5;
+          const containerMargin = 20;
           const containerWidth = $(this).width() - containerMargin;
           const containerHeight = $(this).height() - containerMargin;
           const width = Math.floor(verticalSplit ? $(this).width() : containerWidth / data.series.length);
           const height = Math.floor((verticalSplit ? containerHeight / data.series.length : $(this).height()) - 25);
-          const transformX = width / 2;
-          const transformY = self.gaugeConfig.gaugeType === 'Meter' ? height / 1.5 : height / 2;
 
+          if (height < 0 || width < 0) return;
 
+          div
+            .style('text-align', 'center')
+            .style('overflow-y', 'auto');
 
           data.series.forEach(series => {
             const svg = div.append('svg')
-              .attr('width', width)
-              .attr('height', height)
               .style('display', 'inline-block')
-              .style('overflow', 'hidden');
+              .style('overflow', 'hidden')
+              .attr('width', width);
 
-            const g = svg.append('g')
-              .attr('transform', `translate(${transformX}, ${transformY})`);
+            const g = svg.append('g');
 
             const gauges = self.gauge.drawGauge(g, series, width, height);
+
+            svg.attr('height', height);
+            const transformX = width / 2;
+            const transformY = self.gaugeConfig.gaugeType === 'Arc' ? height / (2 * 0.75) : height / 2;
+            g.attr('transform', `translate(${transformX}, ${transformY})`);
+
             self.addEvents(gauges);
           });
 

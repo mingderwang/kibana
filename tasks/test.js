@@ -42,6 +42,7 @@ module.exports = function (grunt) {
     'test:server',
     'test:ui',
     'test:jest',
+    'test:jest_integration',
     'test:browser',
     'test:api'
   ]);
@@ -97,9 +98,10 @@ module.exports = function (grunt) {
     if (subTask) grunt.fail.fatal(`invalid task "test:${subTask}"`);
 
     grunt.task.run(_.compact([
-      !grunt.option('quick') && 'eslint:source',
+      !grunt.option('quick') && 'run:eslint',
       'licenses',
-      'test:quick'
+      'test:quick',
+      'verifyTranslations',
     ]));
   });
 

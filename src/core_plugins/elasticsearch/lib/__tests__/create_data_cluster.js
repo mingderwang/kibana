@@ -41,20 +41,6 @@ describe('plugins/elasticsearch', function () {
       expect(createCluster.getCall(0).args[1].url).to.eql('http://localhost:9200');
     });
 
-    it('creates the cluster with elasticsearch.tribe config', () => {
-      config.elasticsearch.tribe = {
-        url: 'http://localhost:9201'
-      };
-
-      createDataCluster(server);
-
-      const { createCluster } = server.plugins.elasticsearch;
-
-      sinon.assert.calledOnce(createCluster);
-      expect(createCluster.getCall(0).args[0]).to.eql('data');
-      expect(createCluster.getCall(0).args[1].url).to.eql('http://localhost:9201');
-    });
-
     it('sets client logger for cluster options', () => {
       createDataCluster(server);
 
@@ -68,18 +54,6 @@ describe('plugins/elasticsearch', function () {
       expect(firstCall.args[1].url).to.eql('http://localhost:9200');
       expect(logger.tags).to.eql(['data']);
       expect(logger.logQueries).to.eql(true);
-    });
-
-    it('close cluster of server close', () => {
-      createDataCluster(server);
-
-      const clusterClose = server.on.getCall(0).args[1];
-
-      clusterClose();
-
-      sinon.assert.calledOnce(cluster.close);
-      sinon.assert.calledOnce(server.on);
-      expect(server.on.getCall(0).args[0]).to.eql('close');
     });
   });
 });

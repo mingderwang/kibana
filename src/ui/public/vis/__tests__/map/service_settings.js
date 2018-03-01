@@ -71,7 +71,8 @@ describe('service_settings (FKA tilemaptest)', function () {
 
     $provide.decorator('mapConfig', () => {
       return {
-        manifestServiceUrl: manifestUrl
+        manifestServiceUrl: manifestUrl,
+        includeElasticMapsService: true
       };
     });
   }));
@@ -106,8 +107,9 @@ describe('service_settings (FKA tilemaptest)', function () {
   describe('TMS', function () {
 
     it('should get url', async function () {
-      const tmsService = await serviceSettings.getTMSService();
-      const mapUrl = tmsService.getUrl();
+      const tmsServices = await serviceSettings.getTMSServices();
+      const tmsService = tmsServices[0];
+      const mapUrl = tmsService.url;
       expect(mapUrl).to.contain('{x}');
       expect(mapUrl).to.contain('{y}');
       expect(mapUrl).to.contain('{z}');
@@ -120,52 +122,53 @@ describe('service_settings (FKA tilemaptest)', function () {
     });
 
     it('should get options', async function () {
-      const tmsService = await serviceSettings.getTMSService();
-      const options = tmsService.getTMSOptions();
-      expect(options).to.have.property('minZoom');
-      expect(options).to.have.property('maxZoom');
-      expect(options).to.have.property('attribution').contain('&#169;');
+      const tmsServices = await serviceSettings.getTMSServices();
+      const tmsService = tmsServices[0];
+      expect(tmsService).to.have.property('minZoom');
+      expect(tmsService).to.have.property('maxZoom');
+      expect(tmsService).to.have.property('attribution').contain('&#169;');
     });
 
     describe('modify - url', function () {
 
-      let tilemapSettings;
+      let tilemapServices;
 
       function assertQuery(expected) {
-        const mapUrl = tilemapSettings.getUrl();
+
+        const mapUrl = tilemapServices[0].url;
         const urlObject = url.parse(mapUrl, true);
         Object.keys(expected).forEach(key => {
           expect(urlObject.query).to.have.property(key, expected[key]);
         });
       }
 
-      it('accepts an object', async() => {
+      it('accepts an object', async () => {
         serviceSettings.addQueryParams({ foo: 'bar' });
-        tilemapSettings = await serviceSettings.getTMSService();
+        tilemapServices = await serviceSettings.getTMSServices();
         assertQuery({ foo: 'bar' });
       });
 
-      it('merged additions with previous values', async() => {
+      it('merged additions with previous values', async () => {
         // ensure that changes are always additive
         serviceSettings.addQueryParams({ foo: 'bar' });
         serviceSettings.addQueryParams({ bar: 'stool' });
-        tilemapSettings = await serviceSettings.getTMSService();
+        tilemapServices = await serviceSettings.getTMSServices();
         assertQuery({ foo: 'bar', bar: 'stool' });
       });
 
-      it('overwrites conflicting previous values', async() => {
+      it('overwrites conflicting previous values', async () => {
         // ensure that conflicts are overwritten
         serviceSettings.addQueryParams({ foo: 'bar' });
         serviceSettings.addQueryParams({ bar: 'stool' });
         serviceSettings.addQueryParams({ foo: 'tstool' });
-        tilemapSettings = await serviceSettings.getTMSService();
+        tilemapServices = await serviceSettings.getTMSServices();
         assertQuery({ foo: 'tstool', bar: 'stool' });
       });
 
-      it('when overridden, should continue to work', async() => {
+      it('when overridden, should continue to work', async () => {
         mapsConfig.manifestServiceUrl = manifestUrl2;
         serviceSettings.addQueryParams({ foo: 'bar' });
-        tilemapSettings = await serviceSettings.getTMSService();
+        tilemapServices = await serviceSettings.getTMSServices();
         assertQuery({ foo: 'bar' });
       });
 
@@ -178,7 +181,7 @@ describe('service_settings (FKA tilemaptest)', function () {
 
 
     it('should load manifest', async function () {
-      serviceSettings.addQueryParams({ foo:'bar' });
+      serviceSettings.addQueryParams({ foo: 'bar' });
       const fileLayers = await serviceSettings.getFileLayers();
       fileLayers.forEach(function (fileLayer, index) {
         const expected = vectorManifest.layers[index];
@@ -189,7 +192,7 @@ describe('service_settings (FKA tilemaptest)', function () {
         expect(expected.created_at).to.eql(fileLayer.created_at);
 
         const urlObject = url.parse(fileLayer.url, true);
-        Object.keys({ foo:'bar', elastic_tile_service_tos: 'agree' }).forEach(key => {
+        Object.keys({ foo: 'bar', elastic_tile_service_tos: 'agree' }).forEach(key => {
           expect(urlObject.query).to.have.property(key, expected[key]);
         });
 

@@ -1,6 +1,5 @@
-import React, {
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 
 import classNames from 'classnames';
 
@@ -15,7 +14,12 @@ const KuiInfoButton = props => {
 };
 
 KuiInfoButton.propTypes = {
+  'aria-label': PropTypes.string,
   className: PropTypes.string,
+};
+
+KuiInfoButton.defaultProps = {
+  'aria-label': 'Info'
 };
 
 export {

@@ -3,7 +3,6 @@ import expect from 'expect.js';
 export default function ({ getService, getPageObjects }) {
   const kibanaServer = getService('kibanaServer');
   const retry = getService('retry');
-  const screenshots = getService('screenshots');
   const PageObjects = getPageObjects(['settings', 'common']);
 
   describe('index result field sort', function describeIndexTests() {
@@ -32,9 +31,9 @@ export default function ({ getService, getPageObjects }) {
       describe('sort by heading - ' + col.heading, function indexPatternCreation() {
         before(function () {
           return PageObjects.settings.navigateTo()
-          .then(function () {
-            return PageObjects.settings.clickKibanaIndices();
-          });
+            .then(function () {
+              return PageObjects.settings.clickKibanaIndices();
+            });
         });
 
         beforeEach(function () {
@@ -47,27 +46,25 @@ export default function ({ getService, getPageObjects }) {
 
         it('should sort ascending', function () {
           return PageObjects.settings.sortBy(col.heading)
-          .then(function getText() {
-            return col.selector();
-          })
-          .then(function (rowText) {
-            screenshots.take(`Settings-indices-column-${col.heading}-sort-ascending`);
-            expect(rowText).to.be(col.first);
-          });
+            .then(function getText() {
+              return col.selector();
+            })
+            .then(function (rowText) {
+              expect(rowText).to.be(col.first);
+            });
         });
 
         it('should sort descending', function () {
           return PageObjects.settings.sortBy(col.heading)
-          .then(function sortAgain() {
-            return PageObjects.settings.sortBy(col.heading);
-          })
-          .then(function getText() {
-            return col.selector();
-          })
-          .then(function (rowText) {
-            screenshots.take(`Settings-indices-column-${col.heading}-sort-descending`);
-            expect(rowText).to.be(col.last);
-          });
+            .then(function sortAgain() {
+              return PageObjects.settings.sortBy(col.heading);
+            })
+            .then(function getText() {
+              return col.selector();
+            })
+            .then(function (rowText) {
+              expect(rowText).to.be(col.last);
+            });
         });
       });
     });
@@ -80,9 +77,9 @@ export default function ({ getService, getPageObjects }) {
 
       before(function () {
         return PageObjects.settings.navigateTo()
-        .then(function () {
-          return PageObjects.settings.createIndexPattern();
-        });
+          .then(function () {
+            return PageObjects.settings.createIndexPattern();
+          });
       });
 
       after(function () {
@@ -92,24 +89,27 @@ export default function ({ getService, getPageObjects }) {
       it('makelogs data should have expected number of fields', function () {
         return retry.try(function () {
           return PageObjects.settings.getFieldsTabCount()
-          .then(function (tabCount) {
-            expect(tabCount).to.be('' + EXPECTED_FIELD_COUNT);
-          });
+            .then(function (tabCount) {
+              expect(tabCount).to.be('' + EXPECTED_FIELD_COUNT);
+            });
         });
       });
 
       it('should have correct default page size selected', function () {
         return PageObjects.settings.getPageSize()
-        .then(function (pageSize) {
-          expect(pageSize).to.be('' + EXPECTED_DEFAULT_PAGE_SIZE);
-        });
+          .then(function (pageSize) {
+            expect(pageSize).to.be('' + EXPECTED_DEFAULT_PAGE_SIZE);
+          });
       });
 
       it('should have the correct number of rows per page', async function () {
         for (let pageNum = 1; pageNum <= LAST_PAGE_NUMBER; pageNum += 1) {
-          await PageObjects.settings.goToPage(pageNum);
+          if (pageNum > 1) {
+            // We are by default on page 1 so don't navigate there
+            await PageObjects.settings.goToPage(pageNum);
+          }
+
           const pageFieldNames = await retry.tryMethod(PageObjects.settings, 'getFieldNames');
-          await screenshots.take(`Settings-indexed-fields-page-${pageNum}`);
 
           if (pageNum === LAST_PAGE_NUMBER) {
             expect(pageFieldNames).to.have.length(EXPECTED_LAST_PAGE_COUNT);

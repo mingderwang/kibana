@@ -1,6 +1,5 @@
-import React, {
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import classNames from 'classnames';
 
 export const KuiMenu = ({
@@ -26,5 +25,5 @@ export const KuiMenu = ({
 KuiMenu.propTypes = {
   contained: PropTypes.bool,
   className: PropTypes.string,
-  children:  PropTypes.node
+  children: PropTypes.node
 };

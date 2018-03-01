@@ -8,7 +8,7 @@ import 'ui/share';
 import 'ui/query_bar';
 import chrome from 'ui/chrome';
 import angular from 'angular';
-import { Notifier } from 'ui/notify/notifier';
+import { Notifier, toastNotifications } from 'ui/notify';
 import { VisTypesRegistryProvider } from 'ui/registry/vis_types';
 import { DocTitleProvider } from 'ui/doc_title';
 import { FilterBarQueryFilterProvider } from 'ui/filter_bar/query_filter';
@@ -18,59 +18,57 @@ import { uiModules } from 'ui/modules';
 import editorTemplate from 'plugins/kibana/visualize/editor/editor.html';
 import { DashboardConstants } from 'plugins/kibana/dashboard/dashboard_constants';
 import { VisualizeConstants } from '../visualize_constants';
-import { documentationLinks } from 'ui/documentation_links/documentation_links';
 import { KibanaParsedUrl } from 'ui/url/kibana_parsed_url';
 import { absoluteToParsedUrl } from 'ui/url/absolute_to_parsed_url';
 import { migrateLegacyQuery } from 'ui/utils/migrateLegacyQuery';
-import { QueryManagerProvider } from 'ui/query_manager';
 
 uiRoutes
-.when(VisualizeConstants.CREATE_PATH, {
-  template: editorTemplate,
-  resolve: {
-    savedVis: function (savedVisualizations, courier, $route, Private) {
-      const visTypes = Private(VisTypesRegistryProvider);
-      const visType = _.find(visTypes, { name: $route.current.params.type });
-      const shouldHaveIndex = visType.requiresSearch && visType.options.showIndexSelection;
-      const hasIndex = $route.current.params.indexPattern || $route.current.params.savedSearchId;
-      if (shouldHaveIndex && !hasIndex) {
-        throw new Error('You must provide either an indexPattern or a savedSearchId');
-      }
+  .when(VisualizeConstants.CREATE_PATH, {
+    template: editorTemplate,
+    resolve: {
+      savedVis: function (savedVisualizations, courier, $route, Private) {
+        const visTypes = Private(VisTypesRegistryProvider);
+        const visType = _.find(visTypes, { name: $route.current.params.type });
+        const shouldHaveIndex = visType.requiresSearch && visType.options.showIndexSelection;
+        const hasIndex = $route.current.params.indexPattern || $route.current.params.savedSearchId;
+        if (shouldHaveIndex && !hasIndex) {
+          throw new Error('You must provide either an indexPattern or a savedSearchId');
+        }
 
-      return savedVisualizations.get($route.current.params)
-      .catch(courier.redirectWhenMissing({
-        '*': '/visualize'
-      }));
+        return savedVisualizations.get($route.current.params)
+          .catch(courier.redirectWhenMissing({
+            '*': '/visualize'
+          }));
+      }
     }
-  }
-})
-.when(`${VisualizeConstants.EDIT_PATH}/:id`, {
-  template: editorTemplate,
-  resolve: {
-    savedVis: function (savedVisualizations, courier, $route) {
-      return savedVisualizations.get($route.current.params.id)
-      .catch(courier.redirectWhenMissing({
-        'visualization': '/visualize',
-        'search': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id,
-        'index-pattern': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id,
-        'index-pattern-field': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id
-      }));
+  })
+  .when(`${VisualizeConstants.EDIT_PATH}/:id`, {
+    template: editorTemplate,
+    resolve: {
+      savedVis: function (savedVisualizations, courier, $route) {
+        return savedVisualizations.get($route.current.params.id)
+          .catch(courier.redirectWhenMissing({
+            'visualization': '/visualize',
+            'search': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id,
+            'index-pattern': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id,
+            'index-pattern-field': '/management/kibana/objects/savedVisualizations/' + $route.current.params.id
+          }));
+      }
     }
-  }
-});
+  });
 
 uiModules
-.get('app/visualize', [
-  'kibana/notify',
-  'kibana/courier'
-])
-.directive('visualizeApp', function () {
-  return {
-    restrict: 'E',
-    controllerAs: 'visualizeApp',
-    controller: VisEditor,
-  };
-});
+  .get('app/visualize', [
+    'kibana/notify',
+    'kibana/courier'
+  ])
+  .directive('visualizeApp', function () {
+    return {
+      restrict: 'E',
+      controllerAs: 'visualizeApp',
+      controller: VisEditor,
+    };
+  });
 
 function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courier, Private, Promise, config, kbnBaseUrl) {
   const docTitle = Private(DocTitleProvider);
@@ -120,6 +118,14 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
     dirty: !savedVis.id
   };
 
+  this.getSharingTitle = () => {
+    return savedVis.title;
+  };
+
+  this.getSharingType = () => {
+    return 'visualization';
+  };
+
   if (savedVis.id) {
     docTitle.change(savedVis.title);
   }
@@ -147,14 +153,13 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
       Promise.try(function () {
         vis.setState(appState.vis);
       })
-      .catch(courier.redirectWhenMissing({
-        'index-pattern-field': '/visualize'
-      }));
+        .catch(courier.redirectWhenMissing({
+          'index-pattern-field': '/visualize'
+        }));
     }
 
     return appState;
   }());
-  const queryManager = Private(QueryManagerProvider)($state);
 
   function init() {
     // export some objects
@@ -162,8 +167,6 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
     $scope.indexPattern = vis.indexPattern;
     $scope.searchSource = searchSource;
     $scope.state = $state;
-    $scope.queryDocLinks = documentationLinks.query;
-    $scope.dateDocLinks = documentationLinks.date;
 
     // Create a PersistedState instance.
     $scope.uiState = $state.makeStateful('uiState');
@@ -174,12 +177,6 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
 
     $scope.isAddToDashMode = () => addToDashMode;
 
-    // Associate PersistedState instance with the Vis instance, so that
-    // `uiStateVal` can be called on it. Currently this is only used to extract
-    // map-specific information (e.g. mapZoom, mapCenter).
-    vis.setUiState($scope.uiState);
-
-
     $scope.timefilter = timefilter;
     $scope.opts = _.pick($scope, 'doSave', 'savedVis', 'shareData', 'timefilter', 'isAddToDashMode');
 
@@ -188,19 +185,7 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
       $appStatus.dirty = status.dirty || !savedVis.id;
     });
 
-    $scope.$watchCollection('state.$newFilters', function (filters = []) {
-      // need to convert filters generated from user interaction with viz into kuery AST
-      // These are handled by the filter bar directive when lucene is the query language
-      Promise.all(filters.map(queryManager.addLegacyFilter))
-      .then(() => $scope.state.$newFilters = [])
-      .then($scope.fetch);
-    });
-
-    $scope.$watch('state.query', (newQuery) => {
-      $state.query = migrateLegacyQuery(newQuery);
-
-      $scope.fetch();
-    });
+    $scope.$watch('state.query', $scope.updateQueryAndFetch);
 
     $state.replace();
 
@@ -209,10 +194,18 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
     };
 
     $scope.$watchMulti([
-      'searchSource.get("index").timeFieldName',
+      'searchSource.get("index")',
       'vis.type.options.showTimePicker',
-    ], function ([timeField, requiresTimePicker]) {
-      timefilter.enabled = Boolean(timeField || requiresTimePicker);
+    ], function ([index, requiresTimePicker]) {
+      const showTimeFilter = Boolean((!index || index.timeFieldName) && requiresTimePicker);
+
+      if (showTimeFilter) {
+        timefilter.enableAutoRefreshSelector();
+        timefilter.enableTimeRangeSelector();
+      } else {
+        timefilter.disableAutoRefreshSelector();
+        timefilter.disableTimeRangeSelector();
+      }
     });
 
     // update the searchSource when filters update
@@ -226,24 +219,20 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
       $scope.vis.forceReload();
     };
 
-    $scope.$on('ready:vis', function () {
-      $scope.$emit('application.load');
-    });
-
     $scope.$on('$destroy', function () {
       savedVis.destroy();
       stateMonitor.destroy();
     });
   }
 
-  $scope.updateQuery = function (query) {
+  $scope.updateQueryAndFetch = function (query) {
     // reset state if language changes
     if ($state.query.language && $state.query.language !== query.language) {
       $state.filters = [];
       $state.$newFilters = [];
     }
-
-    $state.query = query;
+    $state.query = migrateLegacyQuery(query);
+    $scope.fetch();
   };
 
   /**
@@ -257,42 +246,46 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
     savedVis.uiStateJSON = angular.toJson($scope.uiState.getChanges());
 
     savedVis.save()
-    .then(function (id) {
-      stateMonitor.setInitialState($state.toJSON());
-      $scope.kbnTopNav.close('save');
+      .then(function (id) {
+        stateMonitor.setInitialState($state.toJSON());
+        $scope.kbnTopNav.close('save');
 
-      if (id) {
-        notify.info('Saved Visualization "' + savedVis.title + '"');
-        if ($scope.isAddToDashMode()) {
-          const savedVisualizationParsedUrl = new KibanaParsedUrl({
-            basePath: chrome.getBasePath(),
-            appId: kbnBaseUrl.slice('/app/'.length),
-            appPath: kbnUrl.eval(`${VisualizeConstants.EDIT_PATH}/{{id}}`, { id: savedVis.id }),
+        if (id) {
+          toastNotifications.addSuccess({
+            title: `Saved '${savedVis.title}'`,
+            'data-test-subj': 'saveVisualizationSuccess',
           });
-          // Manually insert a new url so the back button will open the saved visualization.
-          $window.history.pushState({}, '', savedVisualizationParsedUrl.getRootRelativePath());
-          // Since we aren't reloading the page, only inserting a new browser history item, we need to manually update
-          // the last url for this app, so directly clicking on the Visualize tab will also bring the user to the saved
-          // url, not the unsaved one.
-          chrome.trackSubUrlForApp('kibana:visualize', savedVisualizationParsedUrl);
 
-          const lastDashboardAbsoluteUrl = chrome.getNavLinkById('kibana:dashboard').lastSubUrl;
-          const dashboardParsedUrl = absoluteToParsedUrl(lastDashboardAbsoluteUrl, chrome.getBasePath());
-          dashboardParsedUrl.addQueryParameter(DashboardConstants.NEW_VISUALIZATION_ID_PARAM, savedVis.id);
-          kbnUrl.change(dashboardParsedUrl.appPath);
-        } else if (savedVis.id === $route.current.params.id) {
-          docTitle.change(savedVis.lastSavedTitle);
-        } else {
-          kbnUrl.change(`${VisualizeConstants.EDIT_PATH}/{{id}}`, { id: savedVis.id });
+          if ($scope.isAddToDashMode()) {
+            const savedVisualizationParsedUrl = new KibanaParsedUrl({
+              basePath: chrome.getBasePath(),
+              appId: kbnBaseUrl.slice('/app/'.length),
+              appPath: kbnUrl.eval(`${VisualizeConstants.EDIT_PATH}/{{id}}`, { id: savedVis.id }),
+            });
+            // Manually insert a new url so the back button will open the saved visualization.
+            $window.history.pushState({}, '', savedVisualizationParsedUrl.getRootRelativePath());
+            // Since we aren't reloading the page, only inserting a new browser history item, we need to manually update
+            // the last url for this app, so directly clicking on the Visualize tab will also bring the user to the saved
+            // url, not the unsaved one.
+            chrome.trackSubUrlForApp('kibana:visualize', savedVisualizationParsedUrl);
+
+            const lastDashboardAbsoluteUrl = chrome.getNavLinkById('kibana:dashboard').lastSubUrl;
+            const dashboardParsedUrl = absoluteToParsedUrl(lastDashboardAbsoluteUrl, chrome.getBasePath());
+            dashboardParsedUrl.addQueryParameter(DashboardConstants.NEW_VISUALIZATION_ID_PARAM, savedVis.id);
+            kbnUrl.change(dashboardParsedUrl.appPath);
+          } else if (savedVis.id === $route.current.params.id) {
+            docTitle.change(savedVis.lastSavedTitle);
+          } else {
+            kbnUrl.change(`${VisualizeConstants.EDIT_PATH}/{{id}}`, { id: savedVis.id });
+          }
         }
-      }
-    }, notify.error);
+      }, notify.error);
   };
 
   $scope.unlink = function () {
     if (!$state.linked) return;
 
-    notify.info(`Unlinked Visualization "${savedVis.title}" from Saved Search "${savedVis.savedSearch.title}"`);
+    toastNotifications.addSuccess(`Unlinked from saved search '${savedVis.savedSearch.title}'`);
 
     $state.linked = false;
     const parent = searchSource.getParent(true);
@@ -301,17 +294,24 @@ function VisEditor($scope, $route, timefilter, AppState, $window, kbnUrl, courie
     delete savedVis.savedSearchId;
     parent.set('filter', _.union(searchSource.getOwn('filter'), parent.getOwn('filter')));
 
-    // copy over all state except "aggs" and filter, which is already copied
+    // copy over all state except "aggs", "query" and "filter"
     _(parent.toJSON())
-    .omit('aggs')
-    .forOwn(function (val, key) {
-      searchSource.set(key, val);
-    })
-    .commit();
+      .omit(['aggs', 'filter', 'query'])
+      .forOwn(function (val, key) {
+        searchSource.set(key, val);
+      })
+      .commit();
 
     $state.query = searchSource.get('query');
     $state.filters = searchSource.get('filter');
     searchSource.inherits(parentsParent);
+
+    $scope.fetch();
+  };
+
+
+  $scope.getAdditionalMessage = () => {
+    return `<i class="kuiIcon fa-flask"></i> This visualization is marked as experimental. ${vis.type.feedbackMessage}`;
   };
 
   init();

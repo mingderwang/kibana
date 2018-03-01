@@ -1,6 +1,7 @@
 import Mocha from 'mocha';
 
 import { loadTestFiles } from './load_test_files';
+import { MochaReporterProvider } from './reporter';
 
 /**
  *  Instansiate mocha and load testfiles into it
@@ -14,11 +15,10 @@ import { loadTestFiles } from './load_test_files';
 export async function setupMocha(lifecycle, log, config, providers) {
   // configure mocha
   const mocha = new Mocha({
-    timeout: config.get('timeouts.test'),
     ...config.get('mochaOpts'),
     reporter: await providers.loadExternalService(
-      'configured mocha reporter',
-      config.get('mochaOpts.reporterProvider')
+      'mocha reporter',
+      MochaReporterProvider
     )
   });
 
@@ -27,6 +27,6 @@ export async function setupMocha(lifecycle, log, config, providers) {
     await lifecycle.trigger('beforeEachTest');
   });
 
-  loadTestFiles(mocha, log, lifecycle, providers, config.get('testFiles'));
+  loadTestFiles(mocha, log, lifecycle, providers, config.get('testFiles'), config.get('updateBaselines'));
   return mocha;
 }

@@ -1,8 +1,12 @@
 import moment from 'moment-timezone';
+import numeralLanguages from '@elastic/numeral/languages';
 
 export function getUiSettingDefaults() {
   const weekdays = moment.weekdays().slice();
   const [defaultWeekday] = weekdays;
+  const numeralLanguageIds = numeralLanguages.map(function (numeralLanguage) {
+    return numeralLanguage.id;
+  });
 
   // wrapped in provider so that a new instance is given to each app/test
   return {
@@ -11,7 +15,7 @@ export function getUiSettingDefaults() {
     },
     'query:queryString:options': {
       value: '{ "analyze_wildcard": true, "default_field": "*" }',
-      description: '<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html" target="_blank">Options</a> for the lucene query string parser',
+      description: '<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html" target="_blank" rel="noopener noreferrer">Options</a> for the lucene query string parser',
       type: 'json'
     },
     'search:queryLanguage': {
@@ -26,12 +30,12 @@ export function getUiSettingDefaults() {
     },
     'sort:options': {
       value: '{ "unmapped_type": "boolean" }',
-      description: '<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html" target="_blank">Options</a> for the Elasticsearch sort parameter',
+      description: '<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html" target="_blank" rel="noopener noreferrer">Options</a> for the Elasticsearch sort parameter',
       type: 'json'
     },
     'dateFormat': {
       value: 'MMMM Do YYYY, HH:mm:ss.SSS',
-      description: 'When displaying a pretty formatted date, use this <a href="http://momentjs.com/docs/#/displaying/format/" target="_blank">format</a>',
+      description: 'When displaying a pretty formatted date, use this <a href="http://momentjs.com/docs/#/displaying/format/" target="_blank" rel="noopener noreferrer">format</a>',
     },
     'dateFormat:tz': {
       value: 'Browser',
@@ -54,7 +58,7 @@ export function getUiSettingDefaults() {
         'Values that define the format used in situations where timebased' +
         ' data is rendered in order, and formatted timestamps should adapt to the' +
         ' interval between measurements. Keys are' +
-        ' <a href="http://en.wikipedia.org/wiki/ISO_8601#Time_intervals" target="_blank">' +
+        ' <a href="http://en.wikipedia.org/wiki/ISO_8601#Time_intervals" target="_blank" rel="noopener noreferrer">' +
         'ISO8601 intervals.</a>'
       )
     },
@@ -86,6 +90,12 @@ export function getUiSettingDefaults() {
       description: 'Determines how many terms will be visualized when clicking the "visualize" ' +
       'button, in the field drop downs, in the discover sidebar.'
     },
+    'discover:sort:defaultOrder': {
+      value: 'desc',
+      options: ['desc', 'asc'],
+      type: 'select',
+      description: 'Controls the default sort direction for time based index patterns in the Discover app.',
+    },
     'doc_table:highlight': {
       value: true,
       description: 'Highlight results in Discover and Saved Searches Dashboard.' +
@@ -116,12 +126,17 @@ export function getUiSettingDefaults() {
       value: 100,
       description: 'Never show more than this many bars in date histograms, scale values if needed',
     },
+    'visualize:enableLabs': {
+      value: true,
+      description: 'Enable lab visualizations in Visualize.'
+    },
     'visualization:tileMap:maxPrecision': {
       value: 7,
       description: 'The maximum geoHash precision displayed on tile maps: 7 is high, 10 is very high, ' +
       '12 is the max. ' +
       '<a href="http://www.elastic.co/guide/en/elasticsearch/reference/current/' +
-      'search-aggregations-bucket-geohashgrid-aggregation.html#_cell_dimensions_at_the_equator" target="_blank">' +
+      'search-aggregations-bucket-geohashgrid-aggregation.html#_cell_dimensions_at_the_equator" ' +
+      'target="_blank" rel="noopener noreferrer">' +
       'Explanation of cell dimensions</a>',
     },
     'visualization:tileMap:WMSdefaults': {
@@ -138,7 +153,7 @@ export function getUiSettingDefaults() {
         }
       }, null, 2),
       type: 'json',
-      description: 'Default <a href="http://leafletjs.com/reference.html#tilelayer-wms" target="_blank">properties</a> for the WMS map server support in the coordinate map'
+      description: 'Default <a href="http://leafletjs.com/reference.html#tilelayer-wms" target="_blank" rel="noopener noreferrer">properties</a> for the WMS map server support in the coordinate map'
     },
     'visualization:regionmap:showWarnings': {
       value: true,
@@ -209,22 +224,28 @@ export function getUiSettingDefaults() {
     'format:number:defaultPattern': {
       type: 'string',
       value: '0,0.[000]',
-      description: 'Default <a href="http://numeraljs.com/" target="_blank">numeral format</a> for the "number" format'
+      description: 'Default <a href="http://numeraljs.com/" target="_blank" rel="noopener noreferrer">numeral format</a> for the "number" format'
     },
     'format:bytes:defaultPattern': {
       type: 'string',
       value: '0,0.[000]b',
-      description: 'Default <a href="http://numeraljs.com/" target="_blank">numeral format</a> for the "bytes" format'
+      description: 'Default <a href="http://numeraljs.com/" target="_blank" rel="noopener noreferrer">numeral format</a> for the "bytes" format'
     },
     'format:percent:defaultPattern': {
       type: 'string',
       value: '0,0.[000]%',
-      description: 'Default <a href="http://numeraljs.com/" target="_blank">numeral format</a> for the "percent" format'
+      description: 'Default <a href="http://numeraljs.com/" target="_blank" rel="noopener noreferrer">numeral format</a> for the "percent" format'
     },
     'format:currency:defaultPattern': {
       type: 'string',
       value: '($0,0.[00])',
-      description: 'Default <a href="http://numeraljs.com/" target="_blank">numeral format</a> for the "currency" format'
+      description: 'Default <a href="http://numeraljs.com/" target="_blank" rel="noopener noreferrer">numeral format</a> for the "currency" format'
+    },
+    'format:number:defaultLocale': {
+      value: 'en',
+      type: 'select',
+      options: numeralLanguageIds,
+      description: '<a href="http://numeraljs.com/" target="_blank" rel="noopener noreferrer">numeral language</a>'
     },
     'savedObjects:perPage': {
       type: 'number',
@@ -256,6 +277,40 @@ export function getUiSettingDefaults() {
 }`,
       description: 'The timefilter\'s default refresh interval'
     },
+    'timepicker:quickRanges': {
+      type: 'json',
+      value: JSON.stringify([
+        { from: 'now/d',    to: 'now/d',    display: 'Today',                 section: 0 },
+        { from: 'now/w',    to: 'now/w',    display: 'This week',             section: 0 },
+        { from: 'now/M',    to: 'now/M',    display: 'This month',            section: 0 },
+        { from: 'now/y',    to: 'now/y',    display: 'This year',             section: 0 },
+        { from: 'now/d',    to: 'now',      display: 'Today so far',          section: 0 },
+        { from: 'now/w',    to: 'now',      display: 'Week to date',          section: 0 },
+        { from: 'now/M',    to: 'now',      display: 'Month to date',         section: 0 },
+        { from: 'now/y',    to: 'now',      display: 'Year to date',          section: 0 },
+
+        { from: 'now-15m',  to: 'now',      display: 'Last 15 minutes',       section: 1 },
+        { from: 'now-30m',  to: 'now',      display: 'Last 30 minutes',       section: 1 },
+        { from: 'now-1h',   to: 'now',      display: 'Last 1 hour',           section: 1 },
+        { from: 'now-4h',   to: 'now',      display: 'Last 4 hours',          section: 1 },
+        { from: 'now-12h',  to: 'now',      display: 'Last 12 hours',         section: 1 },
+        { from: 'now-24h',  to: 'now',      display: 'Last 24 hours',         section: 1 },
+        { from: 'now-7d',   to: 'now',      display: 'Last 7 days',           section: 1 },
+
+        { from: 'now-30d',  to: 'now',      display: 'Last 30 days',          section: 2 },
+        { from: 'now-60d',  to: 'now',      display: 'Last 60 days',          section: 2 },
+        { from: 'now-90d',  to: 'now',      display: 'Last 90 days',          section: 2 },
+        { from: 'now-6M',   to: 'now',      display: 'Last 6 months',         section: 2 },
+        { from: 'now-1y',   to: 'now',      display: 'Last 1 year',           section: 2 },
+        { from: 'now-2y',   to: 'now',      display: 'Last 2 years',          section: 2 },
+        { from: 'now-5y',   to: 'now',      display: 'Last 5 years',          section: 2 },
+
+      ], null, 2),
+      description: 'The list of ranges to show in the Quick section of the time picker. ' +
+        'This should be an array of objects, with each object containing "from", "to" (see ' +
+        '<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math" target="_blank" rel="noopener noreferrer">accepted formats</a>' +
+        '), "display" (the title to be displayed), and "section" (which column to put the option in).'
+    },
     'dashboard:defaultDarkTheme': {
       value: false,
       description: 'New dashboards use dark theme by default'
@@ -265,13 +320,12 @@ export function getUiSettingDefaults() {
       description: 'Whether the filters should have a global state (be pinned) by default'
     },
     'filterEditor:suggestValues': {
-      value: false,
-      description: 'Set this property to `true` to have the filter editor suggest values for fields, ' +
-        'instead of just providing a text input. This may result in heavy queries to Elasticsearch.'
+      value: true,
+      description: 'Set this property to false to prevent the filter editor from suggesting values for fields.'
     },
     'notifications:banner': {
       type: 'markdown',
-      description: 'A custom banner intended for temporary notices to all users. <a href="https://help.github.com/articles/basic-writing-and-formatting-syntax/" target="_blank">Markdown supported</a>.',
+      description: 'A custom banner intended for temporary notices to all users. <a href="https://help.github.com/articles/basic-writing-and-formatting-syntax/" target="_blank" rel="noopener noreferrer">Markdown supported</a>.',
       value: ''
     },
     'notifications:lifetime:banner': {

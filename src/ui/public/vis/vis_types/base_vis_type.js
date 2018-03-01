@@ -3,6 +3,7 @@ import _ from 'lodash';
 
 export function VisTypeProvider() {
   class VisType {
+
     constructor(opts) {
       opts = opts || {};
 
@@ -20,7 +21,7 @@ export function VisTypeProvider() {
           defaults: {},            // default configuration
         },
         requestHandler: 'courier',    // select one from registry or pass a function
-        responseHandler: 'none',
+        responseHandler: 'tabify',
         editor: 'default',
         editorConfig: {
           collections: {},         // collections used for configuration (list of positions, ...)
@@ -32,12 +33,19 @@ export function VisTypeProvider() {
           showIndexSelection: true,
           hierarchicalData: false  // we should get rid of this i guess ?
         },
-        isExperimental: false
+        stage: 'production',
+        feedbackMessage: ''
       };
 
       _.defaultsDeep(this, opts, _defaults);
 
       this.requiresSearch = !(this.requestHandler === 'none');
+    }
+
+    shouldMarkAsExperimentalInUI() {
+      //we are not making a distinction in the UI if a plugin is experimental and/or labs.
+      //we just want to indicate it is special. the current flask icon is sufficient for that.
+      return this.stage === 'experimental' || this.stage === 'lab';
     }
   }
 

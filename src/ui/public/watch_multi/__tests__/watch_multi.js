@@ -40,9 +40,9 @@ describe('$scope.$watchMulti', function () {
       expect(triggers).to.be(2);
 
       // remove watchers
-      expect($scope.$$watchers).to.not.eql([]);
+      expect($scope.$$watchers).to.not.have.length(0);
       unwatch();
-      expect($scope.$$watchers).to.eql([]);
+      expect($scope.$$watchers).to.have.length(0);
 
       // prove that it doesn't trigger anymore
       $scope.a++;
@@ -86,34 +86,34 @@ describe('$scope.$watchMulti', function () {
     });
 
     it('passes an array of the current and previous values, in order',
-    function () {
-      const stub = sinon.spy(function () {});
+      function () {
+        const stub = sinon.spy(function () {});
 
-      $scope.one = 'a';
-      $scope.two = 'b';
-      $scope.three = 'c';
-      $scope.$watchMulti([
-        'one',
-        'two',
-        'three'
-      ], stub);
+        $scope.one = 'a';
+        $scope.two = 'b';
+        $scope.three = 'c';
+        $scope.$watchMulti([
+          'one',
+          'two',
+          'three'
+        ], stub);
 
-      $rootScope.$apply();
-      expect(stub.firstCall.args).to.eql([
-        ['a', 'b', 'c'],
-        ['a', 'b', 'c']
-      ]);
+        $rootScope.$apply();
+        expect(stub.firstCall.args).to.eql([
+          ['a', 'b', 'c'],
+          ['a', 'b', 'c']
+        ]);
 
-      $scope.one = 'do';
-      $scope.two = 're';
-      $scope.three = 'mi';
-      $rootScope.$apply();
+        $scope.one = 'do';
+        $scope.two = 're';
+        $scope.three = 'mi';
+        $rootScope.$apply();
 
-      expect(stub.secondCall.args).to.eql([
-        ['do', 're', 'mi'],
-        ['a', 'b', 'c']
-      ]);
-    });
+        expect(stub.secondCall.args).to.eql([
+          ['do', 're', 'mi'],
+          ['a', 'b', 'c']
+        ]);
+      });
 
     it('always has an up to date value', function () {
       let count = 0;

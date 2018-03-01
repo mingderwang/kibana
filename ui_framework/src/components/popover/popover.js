@@ -1,6 +1,16 @@
-import React, { Component } from 'react';
+import React, {
+  Component,
+} from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
+import FocusTrap from 'focus-trap-react';
+import tabbable from 'tabbable';
+
+import { cascadingMenuKeyCodes } from '../../services';
+
+import { KuiOutsideClickDetector } from '../outside_click_detector';
+
+import { KuiPanelSimple, SIZES } from '../../components/panel_simple';
 
 const anchorPositionToClassNameMap = {
   'center': '',
@@ -14,45 +24,101 @@ export class KuiPopover extends Component {
   constructor(props) {
     super(props);
 
-    // Use this variable to differentiate between clicks on the element that should not cause the pop up
-    // to close, and external clicks that should cause the pop up to close.
-    this.didClickMyself = false;
+    this.closingTransitionTimeout = undefined;
+
+    this.state = {
+      isClosing: false,
+      isOpening: false,
+    };
   }
 
-  closePopover = () => {
-    if (this.didClickMyself) {
-      this.didClickMyself = false;
-      return;
+  onKeyDown = e => {
+    if (e.keyCode === cascadingMenuKeyCodes.ESCAPE) {
+      this.props.closePopover();
     }
-
-    this.props.closePopover();
   };
 
-  onClickRootElement = () => {
-    // This prevents clicking on the element from closing it, due to the event handler on the
-    // document object.
-    this.didClickMyself = true;
-  };
+  updateFocus() {
+    // Wait for the DOM to update.
+    window.requestAnimationFrame(() => {
+      if (!this.panel) {
+        return;
+      }
+
+      // If we've already focused on something inside the panel, everything's fine.
+      if (this.panel.contains(document.activeElement)) {
+        return;
+      }
+
+      // Otherwise let's focus the first tabbable item and expedite input from the user.
+      const tabbableItems = tabbable(this.panel);
+      if (tabbableItems.length) {
+        tabbableItems[0].focus();
+      }
+    });
+  }
 
   componentDidMount() {
-    // When the user clicks somewhere outside of the color picker, we will dismiss it.
-    document.addEventListener('click', this.closePopover);
+    this.updateFocus();
+  }
+
+  componentWillReceiveProps(nextProps) {
+    // The popover is being opened.
+    if (!this.props.isOpen && nextProps.isOpen) {
+      clearTimeout(this.closingTransitionTimeout);
+      // We need to set this state a beat after the render takes place, so that the CSS
+      // transition can take effect.
+      window.requestAnimationFrame(() => {
+        this.setState({
+          isOpening: true,
+        });
+      });
+    }
+
+    // The popover is being closed.
+    if (this.props.isOpen && !nextProps.isOpen) {
+      // If the user has just closed the popover, queue up the removal of the content after the
+      // transition is complete.
+      this.setState({
+        isClosing: true,
+        isOpening: false,
+      });
+
+      this.closingTransitionTimeout = setTimeout(() => {
+        this.setState({
+          isClosing: false,
+        });
+      }, 250);
+    }
+  }
+
+  componentDidUpdate() {
+    this.updateFocus();
   }
 
   componentWillUnmount() {
-    document.removeEventListener('click', this.closePopover);
+    clearTimeout(this.closingTransitionTimeout);
   }
+
+  panelRef = node => {
+    if (this.props.ownFocus) {
+      this.panel = node;
+    }
+  };
 
   render() {
     const {
       anchorPosition,
-      bodyClassName,
       button,
       isOpen,
+      ownFocus,
+      withTitle,
       children,
       className,
-      closePopover, // eslint-disable-line no-unused-vars
-      ...rest,
+      closePopover,
+      panelClassName,
+      panelPaddingSize,
+      ...rest
     } = this.props;
 
     const classes = classNames(
@@ -60,41 +126,74 @@ export class KuiPopover extends Component {
       anchorPositionToClassNameMap[anchorPosition],
       className,
       {
-        'kuiPopover-isOpen': isOpen,
+        'kuiPopover-isOpen': this.state.isOpening,
+        'kuiPopover--withTitle': withTitle,
       },
     );
 
-    const bodyClasses = classNames('kuiPopover__body', bodyClassName);
+    const panelClasses = classNames('kuiPopover__panel', panelClassName);
 
-    const body = (
-      <div className={bodyClasses}>
-        { children }
-      </div>
-    );
+    let panel;
+
+    if (isOpen || this.state.isClosing) {
+      let tabIndex;
+      let initialFocus;
+
+      if (ownFocus) {
+        tabIndex = '0';
+        initialFocus = () => this.panel;
+      }
+
+      panel = (
+        <FocusTrap
+          focusTrapOptions={{
+            clickOutsideDeactivates: true,
+            initialFocus,
+          }}
+        >
+          <KuiPanelSimple
+            panelRef={this.panelRef}
+            className={panelClasses}
+            paddingSize={panelPaddingSize}
+            tabIndex={tabIndex}
+            hasShadow
+          >
+            {children}
+          </KuiPanelSimple>
+        </FocusTrap>
+      );
+    }
 
     return (
-      <div
-        onClick={this.onClickRootElement}
-        className={classes}
-        {...rest}
-      >
-        { button }
-        { body }
-      </div>
+      <KuiOutsideClickDetector onOutsideClick={closePopover}>
+        <div
+          className={classes}
+          onKeyDown={this.onKeyDown}
+          {...rest}
+        >
+          {button}
+          {panel}
+        </div>
+      </KuiOutsideClickDetector>
     );
   }
 }
 
 KuiPopover.propTypes = {
   isOpen: PropTypes.bool,
+  ownFocus: PropTypes.bool,
+  withTitle: PropTypes.bool,
   closePopover: PropTypes.func.isRequired,
   button: PropTypes.node.isRequired,
   children: PropTypes.node,
   anchorPosition: PropTypes.oneOf(ANCHOR_POSITIONS),
-  bodyClassName: PropTypes.string,
+  panelClassName: PropTypes.string,
+  panelPaddingSize: PropTypes.oneOf(SIZES),
 };
 
 KuiPopover.defaultProps = {
   isOpen: false,
+  ownFocus: false,
   anchorPosition: 'center',
+  panelPaddingSize: 'm',
 };

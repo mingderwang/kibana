@@ -5,12 +5,12 @@
  */
 
 import _ from 'lodash';
-import { Notifier } from 'ui/notify/notifier';
+import { fatalError } from 'ui/notify';
 import { SimpleEmitter } from 'ui/utils/simple_emitter';
 
-export function EventsProvider(Private, Promise) {
-  const notify = new Notifier({ location: 'EventEmitter' });
+const location = 'EventEmitter';
 
+export function EventsProvider(Private, Promise) {
   _.class(Events).inherits(SimpleEmitter);
   function Events() {
     Events.Super.call(this);
@@ -25,7 +25,7 @@ export function EventsProvider(Private, Promise) {
    * @return {Events} - this, for chaining
    */
   Events.prototype.on = function (name, handler) {
-    if (!_.isArray(this._listeners[name])) {
+    if (!Array.isArray(this._listeners[name])) {
       this._listeners[name] = [];
     }
 
@@ -40,7 +40,7 @@ export function EventsProvider(Private, Promise) {
         rebuildDefer();
 
         // we ignore the completion of handlers, just watch for unhandled errors
-        Promise.resolve(handler.apply(handler, args)).catch(notify.fatal);
+        Promise.resolve(handler.apply(handler, args)).catch(error => fatalError(error, location));
       });
     }());
 
@@ -90,6 +90,9 @@ export function EventsProvider(Private, Promise) {
 
     return Promise.map(self._listeners[name], function (listener) {
       return self._emitChain = self._emitChain.then(function () {
+        // Double check that off wasn't called after an emit, but before this is fired.
+        if (!self._listeners[name] || self._listeners[name].indexOf(listener) < 0) return;
+
         listener.defer.resolve(args);
         return listener.resolved;
       });

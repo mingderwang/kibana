@@ -1,12 +1,11 @@
 import { Server } from 'hapi';
 import { notFound } from 'boom';
 import { map, sample } from 'lodash';
-import { format as formatUrl } from 'url';
 import { map as promiseMap, fromNode } from 'bluebird';
 import { Agent as HttpsAgent } from 'https';
 import { readFileSync } from 'fs';
 
-import Config from '../../server/config/config';
+import { Config } from '../../server/config/config';
 import setupConnection from '../../server/http/setup_connection';
 import registerHapiPlugins from '../../server/http/register_hapi_plugins';
 import setupLogging from '../../server/logging';
@@ -82,8 +81,8 @@ export default class BasePathProxy {
                 });
               }
             })
-            .return(undefined)
-            .nodeify(reply);
+              .return(undefined)
+              .nodeify(reply);
           }
         ],
       },
@@ -92,15 +91,9 @@ export default class BasePathProxy {
           passThrough: true,
           xforward: true,
           agent: this.proxyAgent,
-          mapUri(req, callback) {
-            callback(null, formatUrl({
-              protocol: server.info.protocol,
-              hostname: server.info.host,
-              port: targetPort,
-              pathname: req.params.kbnPath,
-              query: req.query,
-            }));
-          }
+          protocol: server.info.protocol,
+          host: server.info.host,
+          port: targetPort,
         }
       }
     });

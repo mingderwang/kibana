@@ -1,4 +1,4 @@
-import testSubjSelector from '@elastic/test-subj-selector';
+import testSubjSelector from '@kbn/test-subj-selector';
 import {
   filter as filterAsync,
   map as mapAsync,
@@ -13,9 +13,9 @@ export function TestSubjectsProvider({ getService }) {
   const defaultFindTimeout = config.get('timeouts.find');
 
   class TestSubjects {
-    async exists(selector) {
+    async exists(selector, timeout = 1000) {
       log.debug(`TestSubjects.exists(${selector})`);
-      return await find.existsByDisplayedByCssSelector(testSubjSelector(selector));
+      return await find.existsByDisplayedByCssSelector(testSubjSelector(selector), timeout);
     }
 
     async append(selector, text) {
@@ -26,9 +26,10 @@ export function TestSubjectsProvider({ getService }) {
       });
     }
 
-    async click(selector) {
+    async click(selector, timeout = defaultFindTimeout) {
+      log.debug(`TestSubjects.click(${selector})`);
       return await retry.try(async () => {
-        const element = await this.find(selector);
+        const element = await this.find(selector, timeout);
         await remote.moveMouseTo(element);
         await element.click();
       });
@@ -38,9 +39,9 @@ export function TestSubjectsProvider({ getService }) {
       return await find.descendantDisplayedByCssSelector(testSubjSelector(selector), parentElement);
     }
 
-    async find(selector, timeout = defaultFindTimeout) {
+    async find(selector, timeout = 1000) {
       log.debug(`TestSubjects.find(${selector})`);
-      return await find.displayedByCssSelector(testSubjSelector(selector), timeout);
+      return await find.byCssSelector(testSubjSelector(selector), timeout);
     }
 
     async findAll(selector) {
@@ -49,10 +50,29 @@ export function TestSubjectsProvider({ getService }) {
       return await filterAsync(all, el => el.isDisplayed());
     }
 
+    async getPropertyAll(selector, property) {
+      return await this._mapAll(selector, async (element) => {
+        return await element.getProperty(property);
+      });
+    }
+
     async getProperty(selector, property) {
       return await retry.try(async () => {
         const element = await this.find(selector);
         return await element.getProperty(property);
+      });
+    }
+
+    async getAttributeAll(selector, attribute) {
+      return await this._mapAll(selector, async (element) => {
+        return await element.getAttribute(attribute);
+      });
+    }
+
+    async getAttribute(selector, attribute) {
+      return await retry.try(async () => {
+        const element = await this.find(selector);
+        return await element.getAttribute(attribute);
       });
     }
 
@@ -100,6 +120,16 @@ export function TestSubjectsProvider({ getService }) {
     async getVisibleTextAll(selectorAll) {
       return await this._mapAll(selectorAll, async (element) => {
         return await element.getVisibleText();
+      });
+    }
+
+    async moveMouseTo(selector) {
+      // Wrapped in a retry because even though the find should do a stale element check of it's own, we seem to
+      // have run into a case where the element becomes stale after the find succeeds, throwing an error during the
+      // moveMouseTo function.
+      await retry.try(async () => {
+        const element = await this.find(selector);
+        await remote.moveMouseTo(element);
       });
     }
 

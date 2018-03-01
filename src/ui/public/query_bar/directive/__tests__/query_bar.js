@@ -8,6 +8,7 @@ let $parentScope;
 let $elem;
 
 const markup = `<query-bar query="query" app-name="name" on-submit="submitHandler($query)"></query-bar>`;
+const cleanup = [];
 
 function init(query, name, isSwitchingEnabled = true) {
   ngMock.module('kibana');
@@ -25,13 +26,20 @@ function init(query, name, isSwitchingEnabled = true) {
     $parentScope.name = name;
     $parentScope.query = query;
     $elem = angular.element(markup);
+    angular.element('body').append($elem);
+    cleanup.push(() => $elem.remove());
 
     $compile($elem)($parentScope);
     $elem.scope().$digest();
   });
 }
 
+
 describe('queryBar directive', function () {
+  afterEach(() => {
+    cleanup.forEach(fn => fn());
+    cleanup.length = 0;
+  });
 
   describe('language selector', function () {
 
@@ -126,12 +134,11 @@ describe('queryBar directive', function () {
 
     it('should use a unique typeahead key for each appName/language combo', function () {
       init({ query: 'foo', language: 'lucene' }, 'discover', true);
-      const typeahead = $elem.find('.typeahead');
-      expect(typeahead.isolateScope().historyKey).to.be('discover-lucene');
+      expect($elem.isolateScope().queryBar.persistedLog.name).to.be('typeahead:discover-lucene');
 
       $parentScope.query = { query: 'foo', language: 'kuery' };
       $parentScope.$digest();
-      expect(typeahead.isolateScope().historyKey).to.be('discover-kuery');
+      expect($elem.isolateScope().queryBar.persistedLog.name).to.be('typeahead:discover-kuery');
     });
 
   });

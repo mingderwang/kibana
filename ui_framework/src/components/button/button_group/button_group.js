@@ -1,6 +1,5 @@
-import React, {
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 
 import classNames from 'classnames';
 
@@ -10,7 +9,7 @@ const KuiButtonGroup = props => {
   });
 
   return (
-    <div className={classes}>
+    <div className={classes} role="group">
       {props.children}
     </div>
   );

@@ -39,10 +39,12 @@ export default class Worker extends EventEmitter {
     this.clusterBinder = new BinderFor(cluster);
     this.processBinder = new BinderFor(process);
 
-    const argv = _.union(baseArgv, opts.argv || []);
     this.env = {
       kbnWorkerType: this.type,
-      kbnWorkerArgv: JSON.stringify(argv)
+      kbnWorkerArgv: JSON.stringify([
+        ...(opts.baseArgv || baseArgv),
+        ...(opts.argv || [])
+      ])
     };
   }
 
@@ -95,7 +97,7 @@ export default class Worker extends EventEmitter {
   }
 
   parseIncomingMessage(msg) {
-    if (!_.isArray(msg)) return;
+    if (!Array.isArray(msg)) return;
     this.onMessage(...msg);
   }
 
@@ -148,7 +150,7 @@ export default class Worker extends EventEmitter {
     this.fork = cluster.fork(this.env);
     this.forkBinder = new BinderFor(this.fork);
 
-    // when the fork sends a message, comes online, or looses it's connection, then react
+    // when the fork sends a message, comes online, or loses its connection, then react
     this.forkBinder.on('message', msg => this.parseIncomingMessage(msg));
     this.forkBinder.on('online', () => this.onOnline());
     this.forkBinder.on('disconnect', () => this.onDisconnect());

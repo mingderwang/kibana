@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToHtml } from '../../services';
 
 import {
+  GuideCode,
   GuideDemo,
   GuidePage,
   GuideSection,
@@ -11,7 +12,7 @@ import {
 } from '../../components';
 
 import <%= componentExampleName %> from './<%= fileName %>';
-const <%= componentExamplePrefix %>Source = require('!!raw!./<%= fileName %>');
+const <%= componentExamplePrefix %>Source = require('!!raw-loader!./<%= fileName %>');
 const <%= componentExamplePrefix %>Html = renderToHtml(<%= componentExampleName %>);
 
 export default props => (
@@ -27,7 +28,7 @@ export default props => (
       }]}
     >
       <GuideText>
-        Description needed: how to use the <%= componentExampleName %> component.
+        Description needed: how to use the <GuideCode><%= componentExampleName %></GuideCode> component.
       </GuideText>
 
       <GuideDemo>

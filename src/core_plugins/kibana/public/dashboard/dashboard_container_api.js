@@ -1,29 +1,18 @@
 import { ContainerAPI } from 'ui/embeddable';
 
 export class DashboardContainerAPI extends ContainerAPI {
-  constructor(dashboardState, queryManager) {
+  constructor(dashboardState, addFilter) {
     super();
     this.dashboardState = dashboardState;
-    this.queryManager = queryManager;
-  }
-
-  addFilter(field, value, operator, index) {
-    this.queryManager.add(field, value, operator, index);
+    this.addFilter = addFilter;
   }
 
   updatePanel(panelIndex, panelAttributes) {
-    const panelToUpdate = this.dashboardState.getPanels().find((panel) => panel.panelIndex === panelIndex);
-    Object.assign(panelToUpdate, panelAttributes);
-    this.dashboardState.saveState();
-    return panelToUpdate;
+    return this.dashboardState.updatePanel(panelIndex, panelAttributes);
   }
 
   getAppState() {
     return this.dashboardState.appState;
-  }
-
-  createChildUistate(path, initialState) {
-    return this.dashboardState.uiState.createChild(path, initialState, true);
   }
 
   registerPanelIndexPattern(panelIndex, pattern) {
@@ -31,4 +20,7 @@ export class DashboardContainerAPI extends ContainerAPI {
     this.dashboardState.saveState();
   }
 
+  getHidePanelTitles() {
+    return this.dashboardState.getHidePanelTitles();
+  }
 }

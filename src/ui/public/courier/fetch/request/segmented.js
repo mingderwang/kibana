@@ -1,17 +1,17 @@
 import _ from 'lodash';
-import { Notifier } from 'ui/notify/notifier';
-import { SearchRequestProvider } from './search';
+import { Notifier } from 'ui/notify';
+import { SearchRequestProvider } from './search_request';
 import { SegmentedHandleProvider } from './segmented_handle';
 
-export function SegmentedRequestProvider(es, Private, Promise, timefilter, config) {
-  const SearchReq = Private(SearchRequestProvider);
+export function SegmentedRequestProvider(Private, timefilter, config) {
+  const SearchRequest = Private(SearchRequestProvider);
   const SegmentedHandle = Private(SegmentedHandleProvider);
 
   const notify = new Notifier({
     location: 'Segmented Fetch'
   });
 
-  class SegmentedReq extends SearchReq {
+  class SegmentedReq extends SearchRequest {
     constructor(source, defer, initFn) {
       super(source, defer);
 
@@ -39,34 +39,35 @@ export function SegmentedRequestProvider(es, Private, Promise, timefilter, confi
     *********/
 
     start() {
-      super.start();
+      return super.start().then(() => {
+        this._complete = [];
+        this._active = null;
+        this._segments = [];
+        this._all = [];
+        this._queue = [];
 
-      this._complete = [];
-      this._active = null;
-      this._segments = [];
-      this._all = [];
-      this._queue = [];
+        this._mergedResp = {
+          took: 0,
+          hits: {
+            hits: [],
+            total: 0,
+            max_score: 0
+          }
+        };
 
-      this._mergedResp = {
-        took: 0,
-        hits: {
-          hits: [],
-          total: 0,
-          max_score: 0
-        }
-      };
+        // give the request consumer a chance to receive each segment and set
+        // parameters via the handle
+        if (_.isFunction(this._initFn)) this._initFn(this._handle);
+        return this._createQueue();
+      })
+        .then((queue) => {
+          if (this.stopped) return;
 
-      // give the request consumer a chance to receive each segment and set
-      // parameters via the handle
-      if (_.isFunction(this._initFn)) this._initFn(this._handle);
-      return this._createQueue().then((queue) => {
-        if (this.stopped) return;
+          this._all = queue.slice(0);
 
-        this._all = queue.slice(0);
-
-        // Send the initial fetch status
-        this._reportStatus();
-      });
+          // Send the initial fetch status
+          return this._reportStatus();
+        });
     }
 
     continue() {
@@ -182,11 +183,11 @@ export function SegmentedRequestProvider(es, Private, Promise, timefilter, confi
       this._queueCreated = false;
 
       return indexPattern.toDetailedIndexList(timeBounds.min, timeBounds.max, this._direction)
-      .then(queue => {
-        this._queue = queue;
-        this._queueCreated = true;
-        return queue;
-      });
+        .then(queue => {
+          this._queue = queue;
+          this._queueCreated = true;
+          return queue;
+        });
     }
 
     _reportStatus() {

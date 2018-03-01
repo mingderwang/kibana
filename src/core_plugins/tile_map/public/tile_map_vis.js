@@ -1,12 +1,14 @@
+import 'plugins/kbn_vislib_vis_types/controls/vislib_basic_options';
+import './editors/tile_map_vis_params';
 import { supports } from 'ui/utils/supports';
 import { CATEGORY } from 'ui/vis/vis_category';
 import { VisFactoryProvider } from 'ui/vis/vis_factory';
-import { MapsVisualizationProvider } from './maps_visualization';
+import { CoordinateMapsVisualizationProvider } from './coordinate_maps_visualization';
 import { VisSchemasProvider } from 'ui/vis/editors/default/schemas';
 import { AggResponseGeoJsonProvider } from 'ui/agg_response/geo_json/geo_json';
-import tileMapTemplate from './editors/tile_map.html';
 import image from './images/icon-tilemap.svg';
 import { VisTypesRegistryProvider } from 'ui/registry/vis_types';
+import { Status } from 'ui/vis/update_status';
 
 
 VisTypesRegistryProvider.register(function TileMapVisType(Private, getAppState, courier, config) {
@@ -14,8 +16,7 @@ VisTypesRegistryProvider.register(function TileMapVisType(Private, getAppState, 
   const Schemas = Private(VisSchemasProvider);
   const geoJsonConverter = Private(AggResponseGeoJsonProvider);
   const VisFactory = Private(VisFactoryProvider);
-  const MapsVisualization = Private(MapsVisualizationProvider);
-
+  const CoordinateMapsVisualization = Private(CoordinateMapsVisualizationProvider);
 
   return VisFactory.createBaseVisualization({
     name: 'tile_map',
@@ -24,25 +25,22 @@ VisTypesRegistryProvider.register(function TileMapVisType(Private, getAppState, 
     description: 'Plot latitude and longitude coordinates on a map',
     category: CATEGORY.MAP,
     visConfig: {
-      canDesaturate: true,
+      canDesaturate: !!supports.cssFilters,
       defaults: {
         mapType: 'Scaled Circle Markers',
         isDesaturated: true,
         addTooltip: true,
-        heatMaxZoom: 0,
-        heatMinOpacity: 0.1,
-        heatRadius: 25,
-        heatBlur: 15,
+        heatClusterSize: 1.5,
         legendPosition: 'bottomright',
         mapZoom: 2,
         mapCenter: [0, 0],
         wms: config.get('visualization:tileMap:WMSdefaults')
       }
     },
+    requiresUpdateStatus: [Status.AGGS, Status.PARAMS, Status.RESIZE, Status.DATA, Status.UI_STATE],
     responseConverter: geoJsonConverter,
     responseHandler: 'basic',
-    implementsRenderComplete: true,
-    visualization: MapsVisualization,
+    visualization: CoordinateMapsVisualization,
     editorConfig: {
       collections: {
         legendPositions: [{
@@ -64,9 +62,9 @@ VisTypesRegistryProvider.register(function TileMapVisType(Private, getAppState, 
           'Shaded Geohash Grid',
           'Heatmap'
         ],
-        canDesaturate: !!supports.cssFilters
+        baseLayers: []
       },
-      optionsTemplate: tileMapTemplate,
+      optionsTemplate: '<tile-map-vis-params></tile-map-vis-params>',
       schemas: new Schemas([
         {
           group: 'metrics',

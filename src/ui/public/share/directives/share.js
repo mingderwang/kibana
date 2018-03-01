@@ -7,7 +7,7 @@ import {
   getUnhashableStatesProvider,
   unhashUrl,
 } from 'ui/state_management/state_hashing';
-import { Notifier } from 'ui/notify/notifier';
+import { toastNotifications } from 'ui/notify';
 
 import { UrlShortenerProvider } from '../lib/url_shortener';
 
@@ -126,9 +126,9 @@ app.directive('share', function (Private) {
 
         if (this.urlFlags.shortSnapshot) {
           urlShortener.shortenUrl(this.urls.snapshot)
-          .then(shortUrl => {
-            this.urls.shortSnapshot = shortUrl;
-          });
+            .then(shortUrl => {
+              this.urls.shortSnapshot = shortUrl;
+            });
         }
       };
 
@@ -138,17 +138,13 @@ app.directive('share', function (Private) {
         if (this.urlFlags.shortSnapshotIframe) {
           const snapshotIframe = this.makeUrlEmbeddable(this.urls.snapshot);
           urlShortener.shortenUrl(snapshotIframe)
-          .then(shortUrl => {
-            this.urls.shortSnapshotIframe = shortUrl;
-          });
+            .then(shortUrl => {
+              this.urls.shortSnapshotIframe = shortUrl;
+            });
         }
       };
 
       this.copyToClipboard = selector => {
-        const notify = new Notifier({
-          location: `Share ${$scope.objectType}`,
-        });
-
         // Select the text to be copied. If the copy fails, the user can easily copy it manually.
         const copyTextarea = $document.find(selector)[0];
         copyTextarea.select();
@@ -156,12 +152,21 @@ app.directive('share', function (Private) {
         try {
           const isCopied = document.execCommand('copy');
           if (isCopied) {
-            notify.info('URL copied to clipboard.');
+            toastNotifications.add({
+              title: 'URL was copied to the clipboard',
+              'data-test-subj': 'shareCopyToClipboardSuccess',
+            });
           } else {
-            notify.info('URL selected. Press Ctrl+C to copy.');
+            toastNotifications.add({
+              title: 'URL selected. Press Ctrl+C to copy.',
+              'data-test-subj': 'shareCopyToClipboardSuccess',
+            });
           }
         } catch (err) {
-          notify.info('URL selected. Press Ctrl+C to copy.');
+          toastNotifications.add({
+            title: 'URL selected. Press Ctrl+C to copy.',
+            'data-test-subj': 'shareCopyToClipboardSuccess',
+          });
         }
       };
     }

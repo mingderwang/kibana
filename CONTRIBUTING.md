@@ -29,6 +29,7 @@ A high level overview of our contributing guidelines.
     - [Running Browser Automation Tests](#running-browser-automation-tests)
       - [Browser Automation Notes](#browser-automation-notes)
   - [Building OS packages](#building-os-packages)
+  - [Writing documentation](#writing-documentation)
 - [Signing the contributor license agreement](#signing-the-contributor-license-agreement)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Code Reviewing](#code-reviewing)
@@ -104,7 +105,7 @@ git checkout name-of-your-branch
 git rebase master
 ```
 
-You want to make sure there are no merge conflicts. If there is are merge conflicts, git will pause the rebase and allow you to fix the conflicts before continuing.
+You want to make sure there are no merge conflicts. If there are merge conflicts, git will pause the rebase and allow you to fix the conflicts before continuing.
 
 You can use `git status` to see which files contain conflicts. They'll be the ones that aren't staged for commit. Open those files, and look for where git has marked the conflicts. Resolve the conflicts so that the changes you want to make to the code have been incorporated in a way that doesn't destroy work that's been done in master. Refer to master's commit history on GitHub if you need to gain a better understanding of how code is conflicting and how best to resolve it.
 
@@ -157,16 +158,20 @@ Install the version of node.js listed in the `.node-version` file _(this can be 
 nvm install "$(cat .node-version)"
 ```
 
-Install `npm` dependencies
+Install the latest version of [yarn](https://yarnpkg.com).
+
+Bootstrap Kibana and install all the dependencies
 
 ```bash
-npm install
+yarn kbn bootstrap
 ```
+
+(You can also run `yarn kbn` to see the other available commands. For more info about this tool, see https://github.com/elastic/kibana/tree/master/packages/kbn-pm.)
 
 Start elasticsearch.
 
 ```bash
-npm run elasticsearch
+yarn elasticsearch
 ```
 
 > You'll need to have a `java` binary in `PATH` or set `JAVA_HOME`.
@@ -181,12 +186,22 @@ node scripts/makelogs
 
 Start the development server.
   ```bash
-  npm start
+  yarn start
   ```
 
 > On Windows, you'll need you use Git Bash, Cygwin, or a similar shell that exposes the `sh` command.  And to successfully build you'll need Cygwin optional packages zip, tar, and shasum.
 
-Now you can point your web browser to https://localhost:5601 and start using Kibana! When running `npm start`, Kibana will also log that it is listening on port 5603 due to the base path proxy, but you should still access Kibana on port 5601.
+Now you can point your web browser to https://localhost:5601 and start using Kibana! When running `yarn start`, Kibana will also log that it is listening on port 5603 due to the base path proxy, but you should still access Kibana on port 5601.
+
+#### Unsupported URL Type
+
+If you're installing dependencies and seeing an error that looks something like
+
+```
+Unsupported URL Type: link:packages/eslint-config-kibana
+```
+
+you're likely running `npm`. To install dependencies in Kibana you need to run `yarn kbn bootstrap`. For more info, see [Setting Up Your Development Environment](#setting-up-your-development-environment) above.
 
 #### Customizing `config/kibana.dev.yml`
 
@@ -202,7 +217,7 @@ In development mode, Kibana runs a customized version of [Webpack](http://webpac
 
 #### Setting Up SSL
 
-Kibana includes a self-signed certificate that can be used for development purposes: `npm start -- --ssl`.
+Kibana includes a self-signed certificate that can be used for development purposes: `yarn start --ssl`.
 
 ### Linting
 
@@ -214,6 +229,7 @@ Editor     | Plugin
 -----------|-------------------------------------------------------------------------------
 Sublime    | [SublimeLinter-eslint](https://github.com/roadhump/SublimeLinter-eslint#installation)
 Atom       | [linter-eslint](https://github.com/AtomLinter/linter-eslint#installation)
+VSCode     | [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
 IntelliJ   | Settings » Languages & Frameworks » JavaScript » Code Quality Tools » ESLint
 `vi`       | [scrooloose/syntastic](https://github.com/scrooloose/syntastic)
 
@@ -228,23 +244,26 @@ Before running the tests you will need to install the projects dependencies as d
 Once that's done, just run:
 
 ```bash
-npm run test && npm run build -- --skip-os-packages
+yarn test && yarn build --skip-os-packages
 ```
+
+### Debugging Server Code
+`yarn debug` will start the server with Node's inspect and debug-brk flags.  Kibana's development mode will start three processes.  Chrome's developer tools can be configured to connect to all three under the connection tab.
 
 ### Debugging Unit Tests
 
-The standard `npm run test` task runs several sub tasks and can take several minutes to complete, making debugging failures pretty painful. In order to ease the pain specialized tasks provide alternate methods for running the tests.
+The standard `yarn test` task runs several sub tasks and can take several minutes to complete, making debugging failures pretty painful. In order to ease the pain specialized tasks provide alternate methods for running the tests.
 
-To execute both server and browser tests, but skip linting, use `npm run test:quick`.
+To execute both server and browser tests, but skip linting, use `yarn test:quick`.
 
 ```bash
-npm run test:quick
+yarn test:quick
 ```
 
-Use `npm run test:server` when you want to run only the server tests.
+Use `yarn test:server` when you want to run only the server tests.
 
 ```bash
-npm run test:server
+yarn test:server
 ```
 
 When you'd like to execute individual server-side test files, you can use the command below. Note that this command takes care of configuring Mocha with Babel compilation for you, and you'll be better off avoiding a globally installed `mocha` package. This command is great for development and for quickly identifying bugs.
@@ -259,17 +278,20 @@ You could also add the `--debug` option so that `node` is run using the `--debug
 node scripts/mocha --debug <file>
 ```
 
-With `npm run test:browser`, you can run only the browser tests. Coverage reports are available for browser tests by running `npm run test:coverage`. You can find the results under the `coverage/` directory that will be created upon completion.
+With `yarn test:browser`, you can run only the browser tests. Coverage reports are available for browser tests by running `yarn test:coverage`. You can find the results under the `coverage/` directory that will be created upon completion.
 
 ```bash
-npm run test:browser
+yarn test:browser
 ```
 
-Using `npm run test:dev` initializes an environment for debugging the browser tests. Includes an dedicated instance of the kibana server for building the test bundle, and a karma server. When running this task the build is optimized for the first time and then a karma-owned instance of the browser is opened. Click the "debug" button to open a new tab that executes the unit tests.
+Using `yarn test:dev` initializes an environment for debugging the browser tests. Includes an dedicated instance of the kibana server for building the test bundle, and a karma server. When running this task the build is optimized for the first time and then a karma-owned instance of the browser is opened. Click the "debug" button to open a new tab that executes the unit tests.
 
 ```bash
-npm run test:dev
+yarn test:dev
 ```
+
+In the screenshot below, you'll notice the URL is `localhost:9876/debug.html`. You can append a `grep` query parameter to this URL and set it to a string value which will be used to exclude tests which don't match. For example, if you changed the URL to `localhost:9876/debug.html?query=my test` and then refreshed the browser, you'd only see tests run which contain "my test" in the test description.
+
 
 ![Browser test debugging](http://i.imgur.com/DwHxgfq.png)
 
@@ -280,8 +302,8 @@ This should work super if you're using the [Kibana plugin generator](https://git
 To run the tests for just your particular plugin run the following command from your plugin:
 
 ```bash
-npm run test:server
-npm run test:browser -- --dev # remove the --dev flag to run them once and close
+yarn test:server
+yarn test:browser --dev # remove the --dev flag to run them once and close
 ```
 
 ### Cross-browser Compatibility
@@ -295,72 +317,46 @@ npm run test:browser -- --dev # remove the --dev flag to run them once and close
 * Open VMWare and go to Window > Virtual Machine Library. Unzip the virtual machine and drag the .vmx file into your Virtual Machine Library.
 * Right-click on the virtual machine you just added to your library and select "Snapshots...", and then click the "Take" button in the modal that opens. You can roll back to this snapshot when the VM expires in 90 days.
 * In System Preferences > Sharing, change your computer name to be something simple, e.g. "computer".
-* Run Kibana with `npm start -- --host=computer.local` (substituting your computer name).
+* Run Kibana with `yarn start --host=computer.local` (substituting your computer name).
 * Now you can run your VM, open the browser, and navigate to `http://computer.local:5601` to test Kibana.
 
 #### Running Browser Automation Tests
 
-The following will start Kibana, Elasticsearch and the chromedriver for you. To run the functional UI tests use the following commands
-
-```bash
-npm run test:ui
-```
-
-
-In order to start the server required for the `node scripts/functional_test_runner` tasks, use the following command. Once the server is started `node scripts/functional_test_runner` can be run multiple times without waiting for the server to start.
-
-```bash
-npm run test:ui:server
-```
-
-To execute the front-end browser tests, enter the following. This requires the server started by the `test:ui:server` task.
-
-```bash
-node scripts/functional_test_runner
-```
-
-To filter these tests, use `--grep=foo` for only running tests that match a regular expression.
-
-To run these browser tests against against some other Elasticsearch and Kibana instance you can set these environment variables and then run the test runner.
-Here's an example to run against an Elastic Cloud instance (note that you should run the same branch of tests as the version of Kibana you're testing);
-
-```bash
-export TEST_KIBANA_PROTOCOL=https
-export TEST_KIBANA_HOSTNAME=9249d04b1186b3e7bbe11ea60df4f963.us-east-1.aws.found.io
-export TEST_KIBANA_PORT=443
-export TEST_KIBANA_USER=elastic
-export TEST_KIBANA_PASS=<your password here>
-
-export TEST_ES_PROTOCOL=http
-export TEST_ES_HOSTNAME=aaa5d22032d76805fcce724ed9d9f5a2.us-east-1.aws.found.io
-export TEST_ES_PORT=9200
-export TEST_ES_USER=elastic
-export TEST_ES_PASS=<your password here>
-node scripts/functional_test_runner
-```
-
-##### Browser Automation Notes
-
 [Read about the `FunctionalTestRunner`](https://www.elastic.co/guide/en/kibana/current/development-functional-tests.html) to learn more about how you can run and develop functional tests for Kibana core and plugins.
+
 
 ### Building OS packages
 
-Packages are built using fpm, pleaserun, dpkg, and rpm.  fpm and pleaserun can be installed using gem.  Package building has only been tested on Linux and is not supported on any other platform.
+Packages are built using fpm, dpkg, and rpm.  Package building has only been tested on Linux and is not supported on any other platform.
 
 ```bash
 apt-get install ruby-dev rpm
 gem install fpm -v 1.5.0
-gem install pleaserun -v 0.0.24
-npm run build -- --skip-archives
+yarn build --skip-archives
 ```
 
 To specify a package to build you can add `rpm` or `deb` as an argument.
 
 ```bash
-npm run build -- --rpm
+yarn build --rpm
 ```
 
 Distributable packages can be found in `target/` after the build completes.
+
+### Writing documentation
+
+Kibana documentation is written in [asciidoc](http://asciidoc.org/) format in
+the `docs/` directory.
+
+To build the docs, you must clone the [elastic/docs](https://github.com/elastic/docs)
+repo as a sibling of your kibana repo. Follow the instructions in that project's
+README for getting the docs tooling set up.
+
+**To build the docs and open them in your browser:**
+
+```bash
+node scripts/docs.js --open
+```
 
 ## Signing the contributor license agreement
 
@@ -370,7 +366,7 @@ Please make sure you have signed the [Contributor License Agreement](http://www.
 
 Push your local changes to your forked copy of the repository and submit a Pull Request. In the Pull Request, describe what your changes do and mention the number of the issue where discussion has taken place, eg “Closes #123″.
 
-Always submit your pull against `master` unless the bug is only present in an older version. If the bug effects both `master` and another branch say so in your pull.
+Always submit your pull against `master` unless the bug is only present in an older version. If the bug affects both `master` and another branch say so in your pull.
 
 Then sit back and wait. There will probably be discussion about the Pull Request and, if any changes are needed, we'll work with you to get your Pull Request merged into Kibana.
 

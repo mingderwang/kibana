@@ -1,7 +1,5 @@
-import React, {
-  Component,
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React, { Component } from 'react';
 
 import {
   GuidePageSideNav,
@@ -45,6 +43,16 @@ export class GuidePage extends Component {
         </GuidePageSideNav>
 
         <div className="guidePageBody">
+          <div style={{ marginBottom: 40, backgroundColor: '#ffec9d', padding: 20 }}>
+            <h1 className="guideTitle">
+              The Kibana UI Framework has been DEPRECATED.
+            </h1>
+
+            <h2 className="guideTitle">
+              Please use the <a href="https://github.com/elastic/eui">EUI Framework instead</a>.
+            </h2>
+          </div>
+
           {this.props.children}
         </div>
       </div>

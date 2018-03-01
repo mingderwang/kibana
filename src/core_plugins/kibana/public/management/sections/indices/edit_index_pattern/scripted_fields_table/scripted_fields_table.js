@@ -1,115 +1,192 @@
-import _ from 'lodash';
-import 'ui/paginated_table';
-import fieldControlsHtml from '../field_controls.html';
-import { dateScripts } from './date_scripts';
-import { uiModules } from 'ui/modules';
-import template from './scripted_fields_table.html';
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import { getSupportedScriptingLanguages, getDeprecatedScriptingLanguages } from 'ui/scripting_languages';
+import { documentationLinks } from 'ui/documentation_links';
 
-uiModules.get('apps/management')
-.directive('scriptedFieldsTable', function (kbnUrl, Notifier, $filter, confirmModal) {
-  const rowScopes = []; // track row scopes, so they can be destroyed as needed
-  const filter = $filter('filter');
+import {
+  EuiButton,
+  EuiSpacer,
+  EuiOverlayMask,
+  EuiConfirmModal,
+  EUI_MODAL_CONFIRM_BUTTON,
+} from '@elastic/eui';
 
-  const notify = new Notifier();
+import { Table } from './components/table';
+import { Header } from './components/header';
+import { CallOuts } from './components/call_outs';
+import { getTableOfRecordsState, DEFAULT_TABLE_OF_RECORDS_STATE } from './lib';
 
-  return {
-    restrict: 'E',
-    template,
-    scope: true,
-    link: function ($scope) {
 
-      const fieldCreatorPath = '/management/kibana/indices/{{ indexPattern }}/scriptedField';
-      const fieldEditorPath = fieldCreatorPath + '/{{ fieldName }}';
+export class ScriptedFieldsTable extends Component {
+  static propTypes = {
+    indexPattern: PropTypes.object.isRequired,
+    fieldFilter: PropTypes.string,
+    scriptedFieldLanguageFilter: PropTypes.string,
+    helpers: PropTypes.shape({
+      redirectToRoute: PropTypes.func.isRequired,
+      getRouteHref: PropTypes.func.isRequired,
+    }),
+    onRemoveField: PropTypes.func,
+  }
 
-      $scope.perPage = 25;
-      $scope.columns = [
-        { title: 'name' },
-        { title: 'lang' },
-        { title: 'script' },
-        { title: 'format' },
-        { title: 'controls', sortable: false }
-      ];
+  constructor(props) {
+    super(props);
 
-      $scope.$watchMulti(['[]indexPattern.fields', 'fieldFilter', 'scriptedFieldLanguageFilter'], refreshRows);
+    this.state = {
+      deprecatedLangsInUse: [],
+      fieldToDelete: undefined,
+      isDeleteConfirmationModalVisible: false,
+      fields: [],
+      ...DEFAULT_TABLE_OF_RECORDS_STATE,
+    };
+  }
 
-      function refreshRows() {
-        _.invoke(rowScopes, '$destroy');
-        rowScopes.length = 0;
+  componentWillMount() {
+    this.fetchFields();
+  }
 
-        const fields = filter($scope.indexPattern.getScriptedFields(), {
-          name: $scope.fieldFilter,
-          lang: $scope.scriptedFieldLanguageFilter
-        });
-        _.find($scope.editSections, { index: 'scriptedFields' }).count = fields.length; // Update the tab count
+  fetchFields = async () => {
+    const fields = await this.props.indexPattern.getScriptedFields();
 
-        $scope.rows = fields.map(function (field) {
-          const rowScope = $scope.$new();
-          rowScope.field = field;
-          rowScopes.push(rowScope);
+    const deprecatedLangsInUse = [];
+    const deprecatedLangs = getDeprecatedScriptingLanguages();
+    const supportedLangs = getSupportedScriptingLanguages();
 
-          return [
-            _.escape(field.name),
-            {
-              markup: field.lang,
-              attr: {
-                'data-test-subj': 'scriptedFieldLang'
-              }
-            },
-            _.escape(field.script),
-            _.get($scope.indexPattern, ['fieldFormatMap', field.name, 'type', 'title']),
-            {
-              markup: fieldControlsHtml,
-              scope: rowScope
-            }
-          ];
-        });
+    for (const { lang } of fields) {
+      if (deprecatedLangs.includes(lang) || !supportedLangs.includes(lang)) {
+        deprecatedLangsInUse.push(lang);
       }
-
-      $scope.addDateScripts = function () {
-        const conflictFields = [];
-        let fieldsAdded = 0;
-        _.each(dateScripts($scope.indexPattern), function (script, field) {
-          try {
-            $scope.indexPattern.addScriptedField(field, script, 'number');
-            fieldsAdded++;
-          } catch (e) {
-            conflictFields.push(field);
-          }
-        });
-
-        if (fieldsAdded > 0) {
-          notify.info(fieldsAdded + ' script fields created');
-        }
-
-        if (conflictFields.length > 0) {
-          notify.info('Not adding ' + conflictFields.length + ' duplicate fields: ' + conflictFields.join(', '));
-        }
-      };
-
-      $scope.create = function () {
-        const params = {
-          indexPattern: $scope.indexPattern.id
-        };
-
-        kbnUrl.change(fieldCreatorPath, params);
-      };
-
-      $scope.edit = function (field) {
-        const params = {
-          indexPattern: $scope.indexPattern.id,
-          fieldName: field.name
-        };
-
-        kbnUrl.change(fieldEditorPath, params);
-      };
-
-      $scope.remove = function (field) {
-        const confirmModalOptions = {
-          confirmButtonText: 'Delete field',
-          onConfirm: () => { $scope.indexPattern.removeScriptedField(field.name); }
-        };
-        confirmModal(`Are you sure want to delete ${field.name}? This action is irreversible!`, confirmModalOptions);
-      };
     }
-  };
-});
+
+    this.setState({
+      fields,
+      deprecatedLangsInUse,
+      ...this.computeTableState(this.state.criteria, this.props, fields)
+    });
+  }
+
+  onDataCriteriaChange = criteria => {
+    this.setState(this.computeTableState(criteria));
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (this.props.fieldFilter !== nextProps.fieldFilter) {
+      this.setState(this.computeTableState(this.state.criteria, nextProps));
+    }
+    if (this.props.scriptedFieldLanguageFilter !== nextProps.scriptedFieldLanguageFilter) {
+      this.setState(this.computeTableState(this.state.criteria, nextProps));
+    }
+  }
+
+  computeTableState(criteria, props = this.props, fields = this.state.fields) {
+    let items = fields;
+    if (props.fieldFilter) {
+      const fieldFilter = props.fieldFilter.toLowerCase();
+      items = items.filter(field => field.name.toLowerCase().includes(fieldFilter));
+    }
+    if (props.scriptedFieldLanguageFilter) {
+      items = items.filter(field => field.lang === props.scriptedFieldLanguageFilter);
+    }
+
+    return getTableOfRecordsState(items, criteria);
+  }
+
+  renderCallOuts() {
+    const { deprecatedLangsInUse } = this.state;
+
+    return (
+      <CallOuts
+        deprecatedLangsInUse={deprecatedLangsInUse}
+        painlessDocLink={documentationLinks.scriptedFields.painless}
+      />
+    );
+  }
+
+  startDeleteField = field => {
+    this.setState({ fieldToDelete: field, isDeleteConfirmationModalVisible: true });
+  }
+
+  hideDeleteConfirmationModal = () => {
+    this.setState({ fieldToDelete: undefined, isDeleteConfirmationModalVisible: false });
+  }
+
+  deleteField = () =>  {
+    const { indexPattern, onRemoveField } = this.props;
+    const { fieldToDelete } = this.state;
+
+    indexPattern.removeScriptedField(fieldToDelete.name);
+    onRemoveField && onRemoveField();
+    this.fetchFields();
+    this.hideDeleteConfirmationModal();
+  }
+
+  renderDeleteConfirmationModal() {
+    const { fieldToDelete } = this.state;
+
+    if (!fieldToDelete) {
+      return null;
+    }
+
+    return (
+      <EuiOverlayMask>
+        <EuiConfirmModal
+          title={`Delete scripted field '${fieldToDelete.name}'?`}
+          onCancel={this.hideDeleteConfirmationModal}
+          onConfirm={this.deleteField}
+          cancelButtonText="Cancel"
+          confirmButtonText="Delete"
+          defaultFocusedButton={EUI_MODAL_CONFIRM_BUTTON}
+        />
+      </EuiOverlayMask>
+    );
+  }
+
+  render() {
+    const {
+      helpers,
+      indexPattern,
+    } = this.props;
+
+    const {
+      data,
+      criteria: {
+        page,
+        sort,
+      },
+      fields,
+    } = this.state;
+
+    const model = {
+      data,
+      criteria: {
+        page,
+        sort,
+      },
+    };
+
+    return (
+      <div>
+        <Header/>
+        {this.renderCallOuts()}
+        <EuiButton
+          data-test-subj="addScriptedFieldLink"
+          href={helpers.getRouteHref(indexPattern, 'addField')}
+        >
+          Add scripted field
+        </EuiButton>
+        <EuiSpacer size="l" />
+        { fields.length > 0 ?
+          <Table
+            indexPattern={indexPattern}
+            model={model}
+            editField={field => this.props.helpers.redirectToRoute(field, 'edit')}
+            deleteField={this.startDeleteField}
+            onDataCriteriaChange={this.onDataCriteriaChange}
+          />
+          : null
+        }
+        {this.renderDeleteConfirmationModal()}
+      </div>
+    );
+  }
+}

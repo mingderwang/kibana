@@ -1,13 +1,30 @@
 .kuiPanel {
-  border: $globalBorderThin;
-  border-radius: $globalBorderRadius;
+  border: $kuiBorderThin;
+  border-radius: $kuiBorderRadius;
+}
+
+.kuiPanel--prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  min-height: 300px;
+
+  .kuiPanelBody {
+    padding: 30px;
+    max-width: 500px;
+  }
+}
+
+.kuiPanel--noBorder {
+  border: none;
 }
 
 .kuiPanel--withToolBar {
   border-top: none;
   border-radius: 0;
 }
-
 
 .kuiPanel--centered {
   display: flex;
@@ -22,12 +39,16 @@
 
   padding: $panelPadding;
   height: $panelHeight;
-  border-bottom: $globalBorderThin;
+  border-bottom: $kuiBorderThin;
 }
 
+  /**
+   * 1. This way we can use h1, h2, etc.
+   */
   .kuiPanelHeader__title {
-    font-size: $globalTitleFontSize;
-    line-height: $globalLineHeight;
+    font-size: $kuiTitleFontSize;
+    line-height: $kuiLineHeight;
+    margin: 0; /* 1 */
   }
 
 /**

@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React, { Component } from 'react';
 import _ from 'lodash';
 import AddDeleteButtons from '../add_delete_buttons';
 import * as collectionActions from '../lib/collection_actions';
@@ -27,6 +28,7 @@ class CalculationVars extends Component {
       <div className="vis_editor__calc_vars-row" key={row.id}>
         <div className="vis_editor__calc_vars-name">
           <input
+            aria-label="Variable name"
             placeholder="Variable Name"
             className="vis_editor__input-grows-100"
             type="text"
@@ -37,7 +39,6 @@ class CalculationVars extends Component {
         <div className="vis_editor__calc_vars-var">
           <MetricSelect
             onChange={this.handleChange(row, 'field')}
-            exclude={['percentile']}
             metrics={this.props.metrics}
             metric={this.props.model}
             value={row.field}

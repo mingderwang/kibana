@@ -2,7 +2,7 @@ import { VisFactoryProvider } from 'ui/vis/vis_factory';
 import { VisSchemasProvider } from 'ui/vis/editors/default/schemas';
 import { CATEGORY } from 'ui/vis/vis_category';
 import pieTemplate from 'plugins/kbn_vislib_vis_types/editors/pie.html';
-import image from './images/icon-pie.svg';
+import image from './images/icon-donut.svg';
 
 export default function HistogramVisType(Private) {
   const VisFactory = Private(VisFactoryProvider);
@@ -20,7 +20,13 @@ export default function HistogramVisType(Private) {
         addTooltip: true,
         addLegend: true,
         legendPosition: 'right',
-        isDonut: false
+        isDonut: true,
+        labels: {
+          show: false,
+          values: true,
+          last_level: true,
+          truncate: 100
+        }
       },
     },
     editorConfig: {
@@ -59,7 +65,7 @@ export default function HistogramVisType(Private) {
           title: 'Split Slices',
           min: 0,
           max: Infinity,
-          aggFilter: '!geohash_grid'
+          aggFilter: ['!geohash_grid', '!filter']
         },
         {
           group: 'buckets',
@@ -69,11 +75,10 @@ export default function HistogramVisType(Private) {
           mustBeFirst: true,
           min: 0,
           max: 1,
-          aggFilter: '!geohash_grid'
+          aggFilter: ['!geohash_grid', '!filter']
         }
       ])
     },
     hierarchicalData: true,
-    implementsRenderComplete: true
   });
 }

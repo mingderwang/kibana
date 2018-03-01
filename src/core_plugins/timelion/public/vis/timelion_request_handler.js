@@ -15,27 +15,37 @@ const TimelionRequestHandlerProvider = function (Private, Notifier, $http, $root
     handler: function (vis /*, appState, uiState, queryFilter*/) {
 
       return new Promise((resolve, reject) => {
-        console.log('[timelion] get');
-
         const expression = vis.params.expression;
         if (!expression) return;
 
-        $http.post('../api/timelion/run', {
+        let timeFilter = timefilter.time;
+        if (vis.params.timeRange) {
+          timeFilter = {
+            mode: 'absolute',
+            from: vis.params.timeRange.min.toJSON(),
+            to: vis.params.timeRange.max.toJSON()
+          };
+        }
+        const httpResult = $http.post('../api/timelion/run', {
           sheet: [expression],
           extended: {
             es: {
               filter: dashboardContext()
             }
           },
-          time: _.extend(timefilter.time, {
+          time: _.extend(timeFilter, {
             interval: vis.params.interval,
             timezone: timezone
           }),
         })
-          .success(function (resp) {
+          .then(resp => resp.data)
+          .catch(resp => { throw resp.data; });
+
+        httpResult
+          .then(function (resp) {
             resolve(resp);
           })
-          .error(function (resp) {
+          .catch(function (resp) {
             const err = new Error(resp.message);
             err.stack = resp.stack;
             notify.error(err);

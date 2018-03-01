@@ -18,9 +18,13 @@
         ng-show="chrome.getVisible()"
         class="fullWidth"
       >
-        <!-- Block searching if the Visualization is linked to a Saved Search. -->
         <div ng-if="vis.type.requiresSearch && state.linked">
-          Linked to Saved Search &ldquo;{{ savedVis.savedSearch.title }}&rdquo;
+          Linked to Saved Search
+          <a
+            href="#/discover/{{savedVis.savedSearch.id}}"
+          >
+            {{ savedVis.savedSearch.title }}
+          </a>
           &nbsp;
           <a
             href=""
@@ -31,12 +35,12 @@
           </a>
         </div>
 
-        <!-- Allow searching if there is no linked Saved Search. -->
-        <div ng-if="vis.type.requiresSearch && !state.linked && vis.type.options.showQueryBar" class="fullWidth">
+        <div ng-if="vis.type.requiresSearch && vis.type.options.showQueryBar" class="fullWidth">
           <query-bar
             query="state.query"
             app-name="'visualize'"
-            on-submit="updateQuery($query)"
+            on-submit="updateQueryAndFetch($query)"
+            disable-auto-focus="true"
           >
           </query-bar>
         </div>
@@ -46,21 +50,29 @@
 
   <!-- Filters. -->
   <filter-bar
-    ng-if="vis.type.options.showFilterBar && state.query.language === 'lucene' && !state.linked"
+    ng-if="vis.type.options.showFilterBar && ['lucene', 'kql'].includes(state.query.language)"
     state="state"
     index-patterns="[indexPattern]"
   ></filter-bar>
+
+  <div
+    class="euiCallOut euiCallOut--warning euiCallOut--small hide-for-sharing"
+    ng-if="vis.type.shouldMarkAsExperimentalInUI()"
+    data-test-subj="experimentalVisInfo"
+  >
+    <div class="euiText">
+      <p ng-bind-html="getAdditionalMessage()"></p>
+    </div>
+  </div>
 
   <visualize
     saved-obj="savedVis"
     ui-state="uiState"
     app-state="state"
-    editor-mode="true"
-    data-shared-item
-    render-counter
-    data-title="{{savedVis.lastSavedTitle}}"
-    data-description="{{savedVis.description}}"
-    show-spy-panel="chrome.getVisible()">
+    editor-mode="chrome.getVisible()"
+    show-spy-panel="chrome.getVisible()"
+    >
+
   </visualize>
 
 </visualize-app>

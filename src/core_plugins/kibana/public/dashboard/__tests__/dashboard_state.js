@@ -1,7 +1,7 @@
 import ngMock from 'ng_mock';
 import expect from 'expect.js';
 
-import { DashboardState } from '../dashboard_state';
+import { DashboardStateManager } from '../dashboard_state_manager';
 
 describe('DashboardState', function () {
   let AppState;
@@ -9,18 +9,17 @@ describe('DashboardState', function () {
   let savedDashboard;
   let SavedDashboard;
   let timefilter;
-  let quickTimeRanges;
   let dashboardConfig;
+  const mockQuickTimeRanges = [{ from: 'now/w', to: 'now/w', display: 'This week', section: 0 }];
   const mockIndexPattern = { id: 'index1' };
 
   function initDashboardState() {
-    dashboardState = new DashboardState(savedDashboard, AppState, dashboardConfig);
+    dashboardState = new DashboardStateManager(savedDashboard, AppState, dashboardConfig);
   }
 
   beforeEach(ngMock.module('kibana'));
   beforeEach(ngMock.inject(function ($injector) {
     timefilter = $injector.get('timefilter');
-    quickTimeRanges = $injector.get('quickRanges');
     AppState = $injector.get('AppState');
     SavedDashboard = $injector.get('SavedDashboard');
     dashboardConfig = $injector.get('dashboardConfig');
@@ -38,7 +37,7 @@ describe('DashboardState', function () {
       timefilter.time.mode = 'absolute';
 
       initDashboardState();
-      dashboardState.syncTimefilterWithDashboard(timefilter, quickTimeRanges);
+      dashboardState.syncTimefilterWithDashboard(timefilter, mockQuickTimeRanges);
 
       expect(timefilter.time.mode).to.equal('quick');
       expect(timefilter.time.to).to.equal('now/w');
@@ -55,7 +54,7 @@ describe('DashboardState', function () {
       timefilter.time.mode = 'absolute';
 
       initDashboardState();
-      dashboardState.syncTimefilterWithDashboard(timefilter, quickTimeRanges);
+      dashboardState.syncTimefilterWithDashboard(timefilter, mockQuickTimeRanges);
 
       expect(timefilter.time.mode).to.equal('relative');
       expect(timefilter.time.to).to.equal('now');
@@ -72,7 +71,7 @@ describe('DashboardState', function () {
       timefilter.time.mode = 'quick';
 
       initDashboardState();
-      dashboardState.syncTimefilterWithDashboard(timefilter, quickTimeRanges);
+      dashboardState.syncTimefilterWithDashboard(timefilter, mockQuickTimeRanges);
 
       expect(timefilter.time.mode).to.equal('absolute');
       expect(timefilter.time.to).to.equal(savedDashboard.timeTo);
@@ -82,20 +81,20 @@ describe('DashboardState', function () {
 
   describe('panelIndexPatternMapping', function () {
     it('registers index pattern', function () {
-      const state = new DashboardState(savedDashboard, AppState, dashboardConfig);
+      const state = new DashboardStateManager(savedDashboard, AppState, dashboardConfig);
       state.registerPanelIndexPatternMap('panel1', mockIndexPattern);
       expect(state.getPanelIndexPatterns().length).to.equal(1);
     });
 
     it('registers unique index patterns', function () {
-      const state = new DashboardState(savedDashboard, AppState, dashboardConfig);
+      const state = new DashboardStateManager(savedDashboard, AppState, dashboardConfig);
       state.registerPanelIndexPatternMap('panel1', mockIndexPattern);
       state.registerPanelIndexPatternMap('panel2', mockIndexPattern);
       expect(state.getPanelIndexPatterns().length).to.equal(1);
     });
 
     it('does not register undefined index pattern for panels with no index pattern', function () {
-      const state = new DashboardState(savedDashboard, AppState, dashboardConfig);
+      const state = new DashboardStateManager(savedDashboard, AppState, dashboardConfig);
       state.registerPanelIndexPatternMap('markdownPanel1', undefined);
       expect(state.getPanelIndexPatterns().length).to.equal(0);
     });

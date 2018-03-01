@@ -10,13 +10,23 @@ exports[`renders KuiTable 1`] = `
     <tr>
       <th
         class="kuiTableHeaderCell"
+        scope="col"
       >
-        Hi Title
+        <div
+          class="kuiTableHeaderCell__liner"
+        >
+          Hi Title
+        </div>
       </th>
       <th
         class="kuiTableHeaderCell"
+        scope="col"
       >
-        Bye Title
+        <div
+          class="kuiTableHeaderCell__liner"
+        >
+          Bye Title
+        </div>
       </th>
     </tr>
   </thead>

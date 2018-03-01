@@ -49,47 +49,39 @@ export default function ({ getService, getPageObjects }) {
 
     describe('vector map', function indexPatternCreation() {
 
-      it('should show results after clicking play (join on states)', function () {
-
-        const expectedColors = [{ color: 'rgb(253,209,109)' }, { color: 'rgb(164,0,37)' }];
-
-
-        return PageObjects.visualize.getVectorMapData()
-          .then(function (data) {
-
-            log.debug('Actual data-----------------------');
-            log.debug(data);
-            log.debug('---------------------------------');
-
-            expect(data).to.eql(expectedColors);
-          });
+      it('should display spy panel toggle button', async function () {
+        const spyToggleExists = await PageObjects.visualize.getSpyToggleExists();
+        expect(spyToggleExists).to.be(true);
       });
 
-      it('should change color ramp', function () {
-        return PageObjects.visualize.clickOptions()
-          .then(function () {
-            return PageObjects.visualize.selectFieldById('Blues', 'colorSchema');
-          })
-          .then(function () {
-            return PageObjects.visualize.clickGo();
-          })
-          .then(function () {
-            return PageObjects.header.waitUntilLoadingHasFinished();
-          })
-          .then(function () {
-            //this should visualize right away, without re-requesting data
-            return PageObjects.visualize.getVectorMapData();
-          })
-          .then(function (data) {
+      it('should show results after clicking play (join on states)', async function () {
+        const expectedData = 'CN,2,592,IN,2,373,US,1,194,ID,489,BR,415';
+        await PageObjects.visualize.openSpyPanel();
+        const data = await PageObjects.visualize.getDataTableData();
+        expect(data.trim().split('\n').join(',')).to.eql(expectedData);
+      });
 
-            log.debug('Actual data-----------------------');
-            log.debug(data);
-            log.debug('---------------------------------');
+      it('should change results after changing layer to world', async function () {
 
-            const expectedColors = [{ color: 'rgb(190,215,236)' }, { color: 'rgb(7,67,136)' }];
+        await PageObjects.visualize.clickOptions();
+        await  PageObjects.visualize.selectFieldById('World Countries', 'regionMap');
 
-            expect(data).to.eql(expectedColors);
-          });
+        await PageObjects.common.sleep(1000);//give angular time to go update UI state
+
+        //ensure all fields are there
+        await  PageObjects.visualize.selectFieldById('Two letter abbreviation', 'joinField');
+        await  PageObjects.visualize.selectFieldById('Three letter abbreviation', 'joinField');
+        await  PageObjects.visualize.selectFieldById('Country name', 'joinField');
+        await  PageObjects.visualize.selectFieldById('Two letter abbreviation', 'joinField');
+
+        await PageObjects.common.sleep(2000);//need some time for the data to load
+
+        await PageObjects.visualize.openSpyPanel();
+        const actualData = await PageObjects.visualize.getDataTableData();
+        const expectedData = 'CN,2,592,IN,2,373,US,1,194,ID,489,BR,415';
+        expect(actualData.trim().split('\n').join(',')).to.eql(expectedData);
+
+
       });
 
     });

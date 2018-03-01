@@ -28,12 +28,22 @@ export {
 } from './card';
 
 export {
+  KuiCodeEditor
+} from './code_editor';
+
+export {
   KuiColorPicker,
 } from './color_picker';
 
 export {
   KuiCollapseButton,
 } from './collapse_button';
+
+export {
+  KuiContextMenu,
+  KuiContextMenuPanel,
+  KuiContextMenuItem,
+} from './context_menu';
 
 export {
   KuiEmptyTablePrompt,
@@ -50,16 +60,27 @@ export {
 } from './event';
 
 export {
+  KuiExpression,
+  KuiExpressionButton,
+} from './expression';
+
+export {
+  KuiFlexGroup,
+  KuiFlexGrid,
+  KuiFlexItem,
+} from './flex';
+
+export {
   KuiFieldGroup,
   KuiFieldGroupSection,
 } from './form_layout';
 
 export {
   KuiGallery,
-  KuiGalleryButton,
-  KuiGalleryButtonIcon,
-  KuiGalleryButtonImage,
-  KuiGalleryButtonLabel,
+  KuiGalleryItem,
+  KuiGalleryItemIcon,
+  KuiGalleryItemImage,
+  KuiGalleryItemLabel,
 } from './gallery';
 
 export {
@@ -68,6 +89,15 @@ export {
 } from './header_bar';
 
 export { KuiInfoButton } from './info_button';
+
+export {
+  KuiLabel,
+  KuiTextInput,
+  KuiTextArea,
+  KuiSelect,
+  KuiCheckBox,
+  KuiCheckBoxLabel,
+} from './form';
 
 export {
   KuiLocalNav,
@@ -89,7 +119,6 @@ export {
   KuiConfirmModal,
   KuiModal,
   KuiModalBody,
-  KuiModalBodyText,
   KuiModalFooter,
   KuiModalHeader,
   KuiModalHeaderTitle,
@@ -97,12 +126,21 @@ export {
 } from './modal';
 
 export {
+  KuiOutsideClickDetector,
+} from './outside_click_detector';
+
+export {
   KuiPager,
   KuiPagerButtonGroup,
 } from './pager';
 
 export {
+  KuiPanelSimple,
+} from './panel_simple';
+
+export {
   KuiPopover,
+  KuiPopoverTitle,
 } from './popover';
 
 export {
@@ -121,6 +159,11 @@ export {
   KuiTableHeaderCheckBoxCell,
   KuiTableHeader,
   KuiTableBody,
+  KuiListingTable,
+  KuiListingTableCreateButton,
+  KuiListingTableDeleteButton,
+  KuiListingTableNoMatchesPrompt,
+  KuiListingTableLoadingPrompt
 } from './table';
 
 export {

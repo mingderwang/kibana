@@ -21,11 +21,11 @@ target
 .htpasswd
 .eslintcache
 /plugins/
-data
+/data
 disabledPlugins
 webpackstats.json
-config/*
-!config/kibana.yml
+/config/*
+/!config/kibana.yml
 coverage
 selenium
 .babelcache.json
@@ -35,5 +35,7 @@ selenium
 *.out
 ui_framework/doc_site/build
 !ui_framework/doc_site/build/index.html
-yarn.lock
+package-lock.json
 .yo-rc.json
+/.vscode
+npm-debug.log*

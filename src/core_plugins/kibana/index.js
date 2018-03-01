@@ -8,9 +8,11 @@ import search from './server/routes/api/search';
 import { scrollSearchApi } from './server/routes/api/scroll_search';
 import { importApi } from './server/routes/api/import';
 import { exportApi } from './server/routes/api/export';
+import { homeApi } from './server/routes/api/home';
 import scripts from './server/routes/api/scripts';
 import { registerSuggestionsApi } from './server/routes/api/suggestions';
 import { registerFieldFormats } from './server/field_formats/register';
+import { registerTutorials } from './server/tutorials/register';
 import * as systemApi from './server/lib/system_api';
 import handleEsError from './server/lib/handle_es_error';
 import mappings from './mappings.json';
@@ -27,7 +29,7 @@ export default function (kibana) {
     config: function (Joi) {
       return Joi.object({
         enabled: Joi.boolean().default(true),
-        defaultAppId: Joi.string().default('discover'),
+        defaultAppId: Joi.string().default('home'),
         index: Joi.string().default('.kibana')
       }).default();
     },
@@ -47,6 +49,7 @@ export default function (kibana) {
         description: 'the kibana you know and love',
         main: 'plugins/kibana/kibana',
         uses: [
+          'home',
           'visTypes',
           'visResponseHandlers',
           'visRequestHandlers',
@@ -59,7 +62,7 @@ export default function (kibana) {
           'managementSections',
           'devTools',
           'docViews',
-          'embeddableHandlers',
+          'embeddableFactories',
         ],
         injectVars,
       },
@@ -146,9 +149,10 @@ export default function (kibana) {
       scrollSearchApi(server);
       importApi(server);
       exportApi(server);
+      homeApi(server);
       registerSuggestionsApi(server);
       registerFieldFormats(server);
-
+      registerTutorials(server);
       server.expose('systemApi', systemApi);
       server.expose('handleEsError', handleEsError);
       server.expose('injectVars', injectVars);

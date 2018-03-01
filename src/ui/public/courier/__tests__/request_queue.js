@@ -2,91 +2,43 @@ import ngMock from 'ng_mock';
 import expect from 'expect.js';
 import sinon from 'sinon';
 
-import { RequestQueueProvider } from '../_request_queue';
-import { SearchStrategyProvider } from '../fetch/strategy/search';
-import { DocDataStrategyProvider } from '../fetch/strategy/doc_data';
+import { requestQueue } from '../_request_queue';
 
 describe('Courier Request Queue', function () {
-  let docStrategy;
-  let requestQueue;
-  let searchStrategy;
-
   beforeEach(ngMock.module('kibana'));
-  beforeEach(ngMock.inject(function (Private) {
-    docStrategy = Private(DocDataStrategyProvider);
-    requestQueue = Private(RequestQueueProvider);
-    searchStrategy = Private(SearchStrategyProvider);
-  }));
+  beforeEach(requestQueue.clear);
+  after(requestQueue.clear);
 
   class MockReq {
-    constructor(strategy, startable = true) {
-      this.strategy = strategy;
+    constructor(startable = true) {
       this.source = {};
       this.canStart = sinon.stub().returns(startable);
     }
   }
 
-  describe('#getStartable(strategy)', function () {
-    it('only returns requests that match one of the passed strategies', function () {
-      requestQueue.push(
-        new MockReq(docStrategy),
-        new MockReq(searchStrategy),
-        new MockReq(searchStrategy),
-        new MockReq(searchStrategy)
-      );
-
-      expect(requestQueue.getStartable(docStrategy)).to.have.length(1);
-      expect(requestQueue.getStartable(searchStrategy)).to.have.length(3);
-    });
-
-    it('returns all requests when no strategy passed', function () {
-      requestQueue.push(
-        new MockReq(docStrategy),
-        new MockReq(searchStrategy)
-      );
-
-      expect(requestQueue.getStartable()).to.have.length(2);
-    });
-
+  describe('#getStartable()', function () {
     it('returns only startable requests', function () {
       requestQueue.push(
-        new MockReq(docStrategy, true),
-        new MockReq(searchStrategy, false)
+        new MockReq(false),
+        new MockReq(true)
       );
 
       expect(requestQueue.getStartable()).to.have.length(1);
     });
   });
 
-  describe('#get(strategy)', function () {
-    it('only returns requests that match one of the passed strategies', function () {
+  // Note: I'm not convinced this discrepancy between how we calculate startable vs inactive requests makes any sense.
+  // I'm only testing here that the current, (very old) code continues to behave how it always did, but it may turn out
+  // that we can clean this up, or remove this.
+  describe('#getInactive()', function () {
+    it('returns only requests with started = false', function () {
       requestQueue.push(
-        new MockReq(docStrategy),
-        new MockReq(searchStrategy),
-        new MockReq(searchStrategy),
-        new MockReq(searchStrategy)
+        { started: true },
+        { started: false },
+        { started: true },
       );
 
-      expect(requestQueue.get(docStrategy)).to.have.length(1);
-      expect(requestQueue.get(searchStrategy)).to.have.length(3);
-    });
-
-    it('returns all requests when no strategy passed', function () {
-      requestQueue.push(
-        new MockReq(docStrategy),
-        new MockReq(searchStrategy)
-      );
-
-      expect(requestQueue.get()).to.have.length(2);
-    });
-
-    it('returns startable and not-startable requests', function () {
-      requestQueue.push(
-        new MockReq(docStrategy, true),
-        new MockReq(searchStrategy, false)
-      );
-
-      expect(requestQueue.get()).to.have.length(2);
+      expect(requestQueue.getInactive()).to.have.length(1);
     });
   });
 });

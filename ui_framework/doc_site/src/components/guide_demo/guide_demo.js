@@ -1,7 +1,5 @@
-import React, {
-  Component,
-  PropTypes,
-} from 'react';
+import PropTypes from 'prop-types';
+import React, { Component } from 'react';
 
 import classNames from 'classnames';
 
@@ -21,30 +19,45 @@ export class GuideDemo extends Component {
     }
 
     // Inject HTML.
-    this.content.innerHTML = this.props.html;
+    this.content.innerHTML = this.props.html; // eslint-disable-line no-unsanitized/property
 
     // Inject JS.
     const js = document.createElement('script');
     js.type = 'text/javascript';
-    js.innerHTML = this.props.js;
+    js.innerHTML = this.props.js; // eslint-disable-line no-unsanitized/property
     this.content.appendChild(js);
 
     // Inject CSS.
     const css = document.createElement('style');
-    css.innerHTML = this.props.css;
+    css.innerHTML = this.props.css; // eslint-disable-line no-unsanitized/property
     this.content.appendChild(css);
   }
 
   render() {
-    const classes = classNames('guideDemo', {
-      'guideDemo--fullScreen': this.props.isFullScreen,
-      'guideDemo--darkTheme': this.props.isDarkTheme,
-      'theme-dark': this.props.isDarkTheme,
+    const {
+      isFullScreen,
+      isDarkTheme,
+      children,
+      className,
+      js, // eslint-disable-line no-unused-vars
+      html, // eslint-disable-line no-unused-vars
+      css, // eslint-disable-line no-unused-vars
+      ...rest
+    } = this.props;
+
+    const classes = classNames('guideDemo', className, {
+      'guideDemo--fullScreen': isFullScreen,
+      'guideDemo--darkTheme': isDarkTheme,
+      'theme-dark': isDarkTheme,
     });
 
     return (
-      <div className={classes} ref={c => (this.content = c)}>
-        {this.props.children}
+      <div
+        className={classes}
+        ref={c => (this.content = c)}
+        {...rest}
+      >
+        {children}
       </div>
     );
   }

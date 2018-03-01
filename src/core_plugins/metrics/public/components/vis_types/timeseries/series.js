@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ColorPicker from '../../color_picker';
 import AddDeleteButtons from '../../add_delete_buttons';
 import SeriesConfig from './config';
@@ -7,6 +8,7 @@ import Tooltip from '../../tooltip';
 import Split from '../../split';
 import createAggRowRender from '../../lib/create_agg_row_render';
 import createTextHandler from '../../lib/create_text_handler';
+import { createUpDownHandler } from '../../lib/sort_keyhandler';
 
 function TimeseriesSeries(props) {
   const {
@@ -76,42 +78,48 @@ function TimeseriesSeries(props) {
     }
     body = (
       <div className="vis_editor__series-row">
-        <div className="kbnTabs sm">
-          <div
+        <div className="kbnTabs sm" role="tablist">
+          <button
+            role="tab"
+            aria-selected={selectedTab === 'metrics'}
             className={metricsClassName}
             onClick={() => props.switchTab('metrics')}
           >Metrics
-          </div>
-          <div
+          </button>
+          <button
+            role="tab"
+            data-test-subj="seriesOptions"
+            aria-selected={selectedTab === 'options'}
             className={optionsClassname}
             onClick={() => props.switchTab('options')}
           >Options
-          </div>
+          </button>
         </div>
         {seriesBody}
       </div>
     );
   }
 
-  let colorPicker;
-  if (props.colorPicker) {
-    colorPicker = (
-      <ColorPicker
-        disableTrash={true}
-        onChange={props.onChange}
-        name="color"
-        value={model.color}
-      />
-    );
-  }
+  const colorPicker = (
+    <ColorPicker
+      disableTrash={true}
+      onChange={props.onChange}
+      name="color"
+      value={model.color}
+    />
+  );
 
   let dragHandle;
   if (!props.disableDelete) {
     dragHandle = (
       <Tooltip text="Sort">
-        <div className="vis_editor__sort thor__button-outlined-default sm">
+        <button
+          className="vis_editor__sort thor__button-outlined-default sm"
+          aria-label="Sort series by pressing up/down"
+          onKeyDown={createUpDownHandler(props.onShouldSortItem)}
+        >
           <i className="fa fa-sort" />
-        </div>
+        </button>
       </Tooltip>
     );
   }
@@ -125,7 +133,14 @@ function TimeseriesSeries(props) {
     >
       <div className="vis_editor__container">
         <div className="vis_editor__series-details">
-          <div onClick={props.toggleVisible}><i className={caretClassName}/></div>
+          <button
+            className="vis_editor__series-visibility-toggle"
+            onClick={props.toggleVisible}
+            aria-label="Toggle series editor"
+            aria-expanded={props.visible}
+          >
+            <i className={caretClassName}/>
+          </button>
           { colorPicker }
           <div className="vis_editor__row vis_editor__row_item">
             <input
@@ -166,6 +181,7 @@ TimeseriesSeries.propTypes = {
   onClone: PropTypes.func,
   onDelete: PropTypes.func,
   onMouseDown: PropTypes.func,
+  onShouldSortItem: PropTypes.func.isRequired,
   onSortableItemMount: PropTypes.func,
   onSortableItemReadyToMove: PropTypes.func,
   onTouchStart: PropTypes.func,

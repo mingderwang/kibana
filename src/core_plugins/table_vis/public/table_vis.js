@@ -58,7 +58,7 @@ function TableVisTypeProvider(Private) {
           group: 'metrics',
           name: 'metric',
           title: 'Metric',
-          aggFilter: '!geo_centroid',
+          aggFilter: ['!geo_centroid', '!geo_bounds'],
           min: 1,
           defaults: [
             { type: 'count', schema: 'metric' }
@@ -67,14 +67,19 @@ function TableVisTypeProvider(Private) {
         {
           group: 'buckets',
           name: 'bucket',
-          title: 'Split Rows'
+          title: 'Split Rows',
+          aggFilter: ['!filter']
         },
         {
           group: 'buckets',
           name: 'split',
-          title: 'Split Table'
+          title: 'Split Table',
+          aggFilter: ['!filter']
         }
       ])
+    },
+    responseHandlerConfig: {
+      asAggConfigResults: true
     },
     hierarchicalData: function (vis) {
       return Boolean(vis.params.showPartialRows || vis.params.showMeticsAtAllLevels);

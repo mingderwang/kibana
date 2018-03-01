@@ -3,20 +3,26 @@ import expect from 'expect.js';
 import ngMock from 'ng_mock';
 
 import { SegmentedRequestProvider } from '../segmented';
-import { SearchRequestProvider } from '../search';
+import { SearchRequestProvider } from '../search_request';
 
 describe('SegmentedRequestProvider', () => {
   let Promise;
   let SegmentedReq;
   let segmentedReq;
-  let searchReqStart;
+  let abstractReqStart;
 
   beforeEach(ngMock.module('kibana'));
 
   beforeEach(ngMock.inject((Private, $injector) => {
     Promise = $injector.get('Promise');
     SegmentedReq = Private(SegmentedRequestProvider);
-    searchReqStart = sinon.spy(Private(SearchRequestProvider).prototype, 'start');
+
+    const SearchRequest = Private(SearchRequestProvider);
+    abstractReqStart = sinon.stub(SearchRequest.prototype, 'start', () => {
+      const promise = Promise.resolve();
+      sinon.spy(promise, 'then');
+      return promise;
+    });
   }));
 
   describe('#start()', () => {
@@ -30,8 +36,14 @@ describe('SegmentedRequestProvider', () => {
       expect(returned.then).to.be.Function;
     });
 
-    it('calls super.start() synchronously', () => {
-      expect(searchReqStart.called).to.be(true);
+    it('calls AbstractReq#start()', () => {
+      sinon.assert.calledOnce(abstractReqStart);
+    });
+
+    it('listens to promise from super.start()', () => {
+      sinon.assert.calledOnce(abstractReqStart);
+      const promise = abstractReqStart.firstCall.returnValue;
+      sinon.assert.calledOnce(promise.then);
     });
   });
 
@@ -41,7 +53,7 @@ describe('SegmentedRequestProvider', () => {
 
   function mockSource() {
     return {
-      get: sinon.stub().returns(mockIndexPattern())
+      get: sinon.stub().returns(mockIndexPattern()),
     };
   }
 

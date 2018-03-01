@@ -8,7 +8,7 @@ import { uiModules } from 'ui/modules';
 
 const module = uiModules.get('kibana');
 
-module.directive('globalNav', globalNavState => {
+module.directive('globalNav', (globalNavState, chrome) => {
   return {
     restrict: 'E',
     replace: true,
@@ -41,11 +41,18 @@ module.directive('globalNav', globalNavState => {
         updateGlobalNav();
       });
 
+      scope.getHref = path => {
+        return chrome.addBasePath(path);
+      };
+
       scope.toggleGlobalNav = event => {
         event.preventDefault();
         globalNavState.setOpen(!globalNavState.isOpen());
       };
 
+      scope.isHomeActive = () => {
+        return window.location.hash.indexOf('#/home') === 0;
+      };
     }
   };
 });

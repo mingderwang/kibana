@@ -1,11 +1,9 @@
 import _ from 'lodash';
 
 import 'ui/promises';
-import { Notifier } from 'ui/notify/notifier';
+import { fatalError } from 'ui/notify';
 
 export function LooperProvider($timeout, Promise) {
-  const notify = new Notifier();
-
   function Looper(ms, fn) {
     this._fn = fn;
     this._ms = ms === void 0 ? 1500 : ms;
@@ -138,17 +136,17 @@ export function LooperProvider($timeout, Promise) {
     }
 
     self.active = Promise
-    .try(this._fn)
-    .then(function () {
-      self._scheduleLoop();
-    })
-    .catch(function (err) {
-      self.stop();
-      notify.fatal(err);
-    })
-    .finally(function () {
-      self.active = null;
-    });
+      .try(this._fn)
+      .then(function () {
+        self._scheduleLoop();
+      })
+      .catch(function (err) {
+        self.stop();
+        fatalError(err);
+      })
+      .finally(function () {
+        self.active = null;
+      });
   };
 
   /**

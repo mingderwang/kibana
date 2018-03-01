@@ -1,18 +1,20 @@
 import { uiModules } from 'ui/modules';
 import _ from 'lodash';
+import { Storage } from 'ui/storage';
 
-uiModules.get('kibana/persisted_log')
-.factory('PersistedLog', function ($window, localStorage) {
-  function PersistedLog(name, options) {
-    options = options || {};
+const localStorage = new Storage(window.localStorage);
+
+export class PersistedLog {
+  constructor(name, options = {}, storage = localStorage) {
     this.name = name;
     this.maxLength = parseInt(options.maxLength, 10);
     this.filterDuplicates = options.filterDuplicates || false;
-    this.items = localStorage.get(this.name) || [];
+    this.storage = storage;
+    this.items = this.storage.get(this.name) || [];
     if (!isNaN(this.maxLength)) this.items = _.take(this.items, this.maxLength);
   }
 
-  PersistedLog.prototype.add = function (val) {
+  add(val) {
     if (val == null) {
       return this.items;
     }
@@ -30,13 +32,16 @@ uiModules.get('kibana/persisted_log')
     if (!isNaN(this.maxLength)) this.items = _.take(this.items, this.maxLength);
 
     // persist the stack
-    localStorage.set(this.name, this.items);
+    this.storage.set(this.name, this.items);
     return this.items;
-  };
+  }
 
-  PersistedLog.prototype.get = function () {
-    return this.items;
-  };
+  get() {
+    return _.cloneDeep(this.items);
+  }
+}
 
-  return PersistedLog;
-});
+uiModules.get('kibana/persisted_log')
+  .factory('PersistedLog', function () {
+    return PersistedLog;
+  });

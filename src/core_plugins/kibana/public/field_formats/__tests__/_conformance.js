@@ -20,10 +20,11 @@ const formatIds = [
   'url',
   '_source',
   'truncate',
-  'boolean'
+  'boolean',
+  'relative_date'
 ];
 
-// eslint-disable-next-line kibana-custom/no-default-export
+// eslint-disable-next-line @elastic/kibana-custom/no-default-export
 export default describe('conformance', function () {
 
   beforeEach(ngMock.module('kibana'));
@@ -53,7 +54,7 @@ export default describe('conformance', function () {
 
       it('declares compatible field formats as a string or array', function () {
         expect(Type.fieldType).to.be.ok();
-        expect(_.isString(Type.fieldType) || _.isArray(Type.fieldType)).to.be(true);
+        expect(_.isString(Type.fieldType) || Array.isArray(Type.fieldType)).to.be(true);
       });
     });
 

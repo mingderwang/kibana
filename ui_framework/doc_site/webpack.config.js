@@ -1,5 +1,4 @@
 const path = require('path');
-const babelPreset = require('../../src/optimize/babel/helpers').webpackPreset;
 module.exports = {
   devtool: 'source-map',
 
@@ -13,8 +12,9 @@ module.exports = {
   },
 
   resolve: {
-    root: [
-      path.resolve(__dirname, 'src/ui_framework/doc_site')
+    modules: [
+      path.resolve(__dirname, 'src/ui_framework/doc_site'),
+      'node_modules',
     ]
   },
 
@@ -26,30 +26,29 @@ module.exports = {
   },
 
   module: {
-    loaders: [{
-      test: /\.json$/,
-      loader: 'json-loader',
-    }, {
+    rules: [{
       test: /\.js$/,
-      loader: 'babel',
+      loader: 'babel-loader',
       exclude: /node_modules/,
       query: {
-        presets: [babelPreset],
+        presets: [
+          require.resolve('@kbn/babel-preset/webpack')
+        ],
       },
     }, {
       test: /\.scss$/,
-      loaders: ['style', 'css', 'postcss', 'sass'],
+      loaders: ['style-loader', 'css-loader', 'postcss-loader', 'sass-loader'],
       exclude: /node_modules/
     }, {
       test: /\.html$/,
-      loader: 'html',
+      loader: 'html-loader',
       exclude: /node_modules/
     }, {
       test: /\.(woff|woff2|ttf|eot|svg|ico)(\?|$)/,
-      loader: 'file',
+      loader: 'file-loader',
     }, {
       test: require.resolve('jquery'),
-      loader: 'expose?jQuery!expose?$'
+      loader: 'expose-loader?jQuery!expose-loader?$'
     }]
   }
 };

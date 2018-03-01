@@ -1,3 +1,5 @@
+const RESTRICTED_GLOBALS = require('./restricted_globals')
+
 module.exports = {
   parser: 'babel-eslint',
 
@@ -6,11 +8,12 @@ module.exports = {
     'babel',
     'react',
     'import',
+    'no-unsanitized',
+    'prefer-object-spread',
   ],
 
   env: {
     es6: true,
-    amd: true,
     node: true,
     mocha: true,
     browser: true,
@@ -26,6 +29,7 @@ module.exports = {
     'block-scoped-var': 'error',
     camelcase: [ 'error', { properties: 'never' } ],
     'comma-dangle': 'off',
+    'comma-spacing': ['error', { before: false, after: true }],
     'comma-style': [ 'error', 'last' ],
     'consistent-return': 'off',
     curly: [ 'error', 'multi-line' ],
@@ -34,7 +38,7 @@ module.exports = {
     eqeqeq: [ 'error', 'allow-null' ],
     'guard-for-in': 'error',
     indent: [ 'error', 2, { SwitchCase: 1 } ],
-    'key-spacing': [ 'off', { align: 'value' } ],
+    'key-spacing': ['error', { beforeColon: false, afterColon: true }],
     'max-len': [ 'error', 140, 2, { ignoreComments: true, ignoreUrls: true } ],
     'new-cap': [ 'error', { capIsNewExceptions: [ 'Private' ] } ],
     'no-bitwise': 'off',
@@ -58,7 +62,7 @@ module.exports = {
     'no-path-concat': 'off',
     'no-proto': 'error',
     'no-redeclare': 'error',
-    'no-restricted-globals': [ 'error', 'context' ],
+    'no-restricted-globals': ['error', ...RESTRICTED_GLOBALS],
     'no-return-assign': 'off',
     'no-script-url': 'error',
     'no-sequences': 'error',
@@ -66,6 +70,8 @@ module.exports = {
     'no-trailing-spaces': 'error',
     'no-undef': 'error',
     'no-underscore-dangle': 'off',
+    'no-unsanitized/method': 'error',
+    'no-unsanitized/property': 'error',
     'no-unused-expressions': 'off',
     'no-unused-vars': [ 'error' ],
     'no-use-before-define': [ 'error', 'nofunc' ],
@@ -132,5 +138,7 @@ module.exports = {
     'import/no-named-as-default': 'error',
     'import/no-named-as-default-member': 'error',
     'import/no-duplicates': 'error',
+
+    'prefer-object-spread/prefer-object-spread': 'error',
   }
 }

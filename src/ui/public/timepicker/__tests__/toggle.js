@@ -1,3 +1,4 @@
+import moment from 'moment';
 import expect from 'expect.js';
 import ngMock from 'ng_mock';
 import $ from 'jquery';
@@ -23,18 +24,61 @@ describe('kbnGlobalTimepicker', function () {
     const $el = compile();
     expect($el.attr('data-test-subj')).to.be('globalTimepicker');
   });
-  it('sets data-shared-timefilter to false when timefilter.enabled is false', function () {
-    scope.timefilter = {
-      enabled: false
+
+  it('sets data-shared-timefilter-* using the timefilter when auto-refresh selector is enabled', function () {
+    const minString = '2000-01-01T00:00:00Z';
+    const maxString = '2001-01-01T00:00:00Z';
+    const bounds = {
+      min: moment(minString),
+      max: moment(maxString),
     };
+    scope.timefilter = {
+      isAutoRefreshSelectorEnabled: true,
+      isTimeRangeSelectorEnabled: false,
+      getBounds: () => bounds
+    };
+
     const $el = compile();
-    expect($el.attr('data-shared-timefilter')).to.eql('false');
+
+    expect($el.attr('data-shared-timefilter-from')).to.eql(minString);
+    expect($el.attr('data-shared-timefilter-to')).to.eql(maxString);
   });
-  it('sets data-shared-timefilter to true when timefilter.enabled is true', function () {
-    scope.timefilter = {
-      enabled: true
+
+  it('sets data-shared-timefilter-* using the timefilter when time range selector is enabled', function () {
+    const minString = '2000-01-01T00:00:00Z';
+    const maxString = '2001-01-01T00:00:00Z';
+    const bounds = {
+      min: moment(minString),
+      max: moment(maxString),
     };
+    scope.timefilter = {
+      isAutoRefreshSelectorEnabled: false,
+      isTimeRangeSelectorEnabled: true,
+      getBounds: () => bounds
+    };
+
     const $el = compile();
-    expect($el.attr('data-shared-timefilter')).to.eql('true');
+
+    expect($el.attr('data-shared-timefilter-from')).to.eql(minString);
+    expect($el.attr('data-shared-timefilter-to')).to.eql(maxString);
+  });
+
+  it(`doesn't set data-shared-timefilter-* when auto-refresh and time range selectors are both disabled`, function () {
+    const minString = '2000-01-01T00:00:00Z';
+    const maxString = '2001-01-01T00:00:00Z';
+    const bounds = {
+      min: moment(minString),
+      max: moment(maxString),
+    };
+    scope.timefilter = {
+      isAutoRefreshSelectorEnabled: false,
+      isTimeRangeSelectorEnabled: false,
+      getBounds: () => bounds
+    };
+
+    const $el = compile();
+
+    expect($el.attr('data-shared-timefilter-from')).to.eql('');
+    expect($el.attr('data-shared-timefilter-to')).to.eql('');
   });
 });

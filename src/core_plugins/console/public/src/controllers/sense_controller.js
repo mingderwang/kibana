@@ -1,5 +1,5 @@
 import 'ui/doc_title';
-import { useResizeCheckerProvider } from '../sense_editor_resize';
+import { useResizeChecker } from '../sense_editor_resize';
 import $ from 'jquery';
 import { initializeInput } from '../input';
 import { initializeOutput } from '../output';
@@ -9,14 +9,12 @@ import { SenseTopNavController } from './sense_top_nav_controller';
 const module = require('ui/modules').get('app/sense');
 
 module.run(function (Private, $rootScope) {
-  const useResizeChecker = Private(useResizeCheckerProvider);
-
   module.setupResizeCheckerForRootEditors = ($el, ...editors) => {
     return useResizeChecker($rootScope, $el, ...editors);
   };
 });
 
-module.controller('SenseController', function SenseController(Private, $scope, $timeout, $location, docTitle) {
+module.controller('SenseController', function SenseController(Private, $scope, $timeout, $location, docTitle, kbnUiAceKeyboardModeService) {
   docTitle.change('Console');
 
   $scope.topNavController = Private(SenseTopNavController);
@@ -28,6 +26,7 @@ module.controller('SenseController', function SenseController(Private, $scope, $
     output = initializeOutput($('#output'));
     input = initializeInput($('#editor'), $('#editor_actions'), $('#copy_as_curl'), output);
     init(input, output, $location.search().load_from);
+    kbnUiAceKeyboardModeService.initialize($scope, $('#editor'));
   });
 
   $scope.sendSelected = () => {
