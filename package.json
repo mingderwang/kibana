@@ -128,11 +128,8 @@
     "glob": "5.0.13",
     "glob-all": "3.0.1",
     "good-squeeze": "2.1.0",
-<<<<<<< HEAD
     "gridster": "0.5.6",
     "grunt-angular-translate": "0.3.0",
-=======
->>>>>>> 6fd3a229769fdd8393d771f9061435be945023a0
     "h2o2": "5.1.1",
     "handlebars": "4.0.5",
     "hapi": "14.2.0",
